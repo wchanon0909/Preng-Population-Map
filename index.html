@@ -1,0 +1,2297 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Preng Population Map V5.6</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: rgba(255, 255, 255, 0.94);
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --primary: #0f766e;
+      --primary-soft: #ccfbf1;
+      --blue: #2563eb;
+      --danger: #dc2626;
+      --warning: #f59e0b;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    body {
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #dbeafe;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .leaflet-container {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .topbar {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: calc(12px + env(safe-area-inset-top));
+      z-index: 800;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .brand, .mode-card, .panel, .legend, .map-status, .floating-actions button, .locate-card, .map-switch {
+      background: var(--card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: var(--shadow);
+      pointer-events: auto;
+    }
+
+    .brand {
+      border-radius: var(--radius);
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 106px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: #f8e7a1;
+      font-weight: 900;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a 58%, #0f766e);
+      box-shadow: inset 0 0 0 1px rgba(248, 231, 161, 0.24), 0 8px 18px rgba(15, 23, 42, 0.16);
+      flex: 0 0 auto;
+      text-align: center;
+      line-height: 1.02;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-logo span {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.88;
+      margin-top: 2px;
+    }
+
+    .brand-logo b {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+    }
+
+    .brand h1 {
+      font-size: 17px;
+      line-height: 1.12;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mode-card {
+      border-radius: var(--radius);
+      padding: 10px;
+      min-width: 136px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .mode-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: #115e59;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .pill.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .panel {
+      position: absolute;
+      left: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 750;
+      width: 354px;
+      max-width: calc(100vw - 28px);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(248, 250, 252, 0.72);
+    }
+
+    .panel-head strong {
+      font-size: 14px;
+    }
+
+    .panel-head small {
+      color: var(--muted);
+      font-size: 11px;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .panel-title-block { min-width: 0; }
+
+    .panel-head-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .sheet-toggle {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      color: #334155;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      line-height: 1;
+    }
+
+    .panel-body {
+      padding: 12px 14px 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .panel.collapsed .panel-body { display: none; }
+    .panel.collapsed .panel-head small { display: none; }
+    .panel.collapsed .panel-head { min-height: 58px; cursor: pointer; }
+    .panel.expanded .panel-body { display: grid; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .summary-item {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 9px;
+    }
+
+    .summary-item span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .summary-item b {
+      font-size: 18px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 11px;
+      font: inherit;
+      background: white;
+      color: var(--ink);
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.13);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+
+    .boundary-tools {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px dashed rgba(15, 118, 110, 0.30);
+      background: rgba(240, 253, 250, 0.72);
+      border-radius: 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .boundary-tools[hidden] { display: none !important; }
+
+    .boundary-tools-title {
+      font-size: 12px;
+      font-weight: 900;
+      color: #115e59;
+    }
+
+    .boundary-tools-text {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .boundary-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .boundary-actions .mini-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .floating-actions {
+      position: absolute;
+      right: 14px;
+      bottom: calc(98px + env(safe-area-inset-bottom));
+      z-index: 760;
+      display: grid;
+      gap: 8px;
+    }
+
+    .floating-actions button, .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 13px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--ink);
+    }
+
+    .floating-actions button {
+      min-width: 48px;
+      min-height: 48px;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #f1f5f9; color: var(--ink); border: 1px solid var(--line); }
+    .btn-danger { background: #fee2e2; color: #991b1b; }
+    .btn-row { display: flex; gap: 8px; }
+    .btn-row .btn { flex: 1; }
+
+    .legend {
+      position: absolute;
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 755;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      min-width: 174px;
+      font-size: 12px;
+    }
+
+    .legend strong { display: block; margin-bottom: 7px; }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 5px 0;
+      color: #334155;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 99px;
+      display: inline-block;
+      border: 2px solid white;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+      flex: 0 0 auto;
+    }
+
+    .dot.general { background: #22c55e; }
+    .dot.elderly { background: #f59e0b; }
+    .dot.bedridden { background: #ef4444; }
+    .dot.chronic { background: #8b5cf6; }
+    .dot.empty { background: #94a3b8; }
+
+    .map-status {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 760;
+      padding: 8px 10px;
+      border-radius: 999px;
+      color: #334155;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      bottom: calc(86px + env(safe-area-inset-bottom));
+      z-index: 2000;
+      max-width: calc(100vw - 28px);
+      background: rgba(15, 23, 42, 0.92);
+      color: white;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.18s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 1900;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.42);
+      padding: 18px;
+    }
+
+    .modal-backdrop.show { display: flex; }
+
+    .modal {
+      width: 720px;
+      max-width: 100%;
+      max-height: calc(100vh - 30px);
+      overflow: auto;
+      background: white;
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+    }
+
+    .modal header {
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal h2 { font-size: 18px; margin: 0; }
+    .modal header p { color: var(--muted); margin: 4px 0 0; font-size: 12px; }
+    .modal-body { padding: 12px 14px 14px; display: grid; gap: 9px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .form-grid .span-2 { grid-column: span 2; }
+
+    .form-section-title {
+      font-size: 13px;
+      font-weight: 900;
+      color: #0f172a;
+      margin: 4px 0 0;
+    }
+
+    .coord-line {
+      color: var(--muted);
+      font-size: 12px;
+      margin: -3px 0 2px;
+      line-height: 1.35;
+    }
+
+    .section-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .add-row-btn {
+      border: 1px solid #99f6e4;
+      background: #ccfbf1;
+      color: #115e59;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .resident-rows {
+      display: grid;
+      gap: 7px;
+    }
+
+    .resident-row {
+      display: grid;
+      grid-template-columns: 30px minmax(120px, 1.35fr) 108px 150px 116px 34px;
+      gap: 6px;
+      align-items: end;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .resident-index {
+      width: 28px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid #e2e8f0;
+    }
+
+    .resident-row input,
+    .resident-row select {
+      border-radius: 10px;
+      padding: 8px 8px;
+      font-size: 12px;
+      min-width: 0;
+    }
+
+    .resident-remove {
+      width: 34px;
+      height: 34px;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      background: #fff1f2;
+      color: #b91c1c;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .resident-remove:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .resident-mini-list {
+      display: grid;
+      gap: 4px;
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .resident-mini-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 4px;
+    }
+
+
+    label {
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .close-btn {
+      background: #f1f5f9;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 99px;
+      border: 0;
+      cursor: pointer;
+      font-size: 18px;
+      color: #334155;
+      flex: 0 0 auto;
+    }
+
+    .house-marker {
+      width: 24px;
+      height: 24px;
+      border-radius: 50% 50% 50% 7px;
+      transform: rotate(-45deg);
+      border: 3px solid white;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.32);
+    }
+
+    .house-marker::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.92);
+      left: 5px;
+      top: 5px;
+    }
+
+    .house-marker.general { background: #22c55e; }
+    .house-marker.elderly { background: #f59e0b; }
+    .house-marker.bedridden { background: #ef4444; }
+    .house-marker.chronic { background: #8b5cf6; }
+    .house-marker.empty { background: #94a3b8; }
+
+    .selected-point-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 4px solid white;
+      background: rgba(15, 118, 110, 0.92);
+      box-shadow: 0 0 0 8px rgba(15, 118, 110, 0.22), 0 10px 24px rgba(15, 23, 42, 0.28);
+      position: relative;
+    }
+
+    .selected-point-icon::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 999px;
+      background: white;
+      opacity: 0.95;
+    }
+
+    .add-hint {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(151px + env(safe-area-inset-top));
+      z-index: 745;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      max-width: calc(100vw - 28px);
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.92);
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: var(--shadow);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .add-hint.show { display: inline-flex; }
+
+
+    .add-house-btn {
+      background: var(--primary) !important;
+      color: white !important;
+      font-size: 22px !important;
+      line-height: 1;
+    }
+
+    .center-pin-overlay {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -88%);
+      z-index: 820;
+      width: 64px;
+      height: 74px;
+      display: none;
+      place-items: center;
+      pointer-events: none;
+      filter: drop-shadow(0 14px 18px rgba(15, 23, 42, 0.26));
+    }
+
+    .center-pin-overlay.show { display: grid; }
+
+    .center-pin-svg {
+      width: 58px;
+      height: 72px;
+      display: block;
+      overflow: visible;
+    }
+
+    .center-pin-tip-dot {
+      position: absolute;
+      left: 50%;
+      top: 88%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.22);
+      border: 2px solid rgba(15, 118, 110, 0.88);
+      box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.10);
+    }
+
+    .select-point-bar {
+      position: absolute;
+      left: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      transform: translate(-50%, 18px);
+      z-index: 830;
+      width: min(560px, calc(100vw - 28px));
+      display: none;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .select-point-bar.show {
+      display: grid;
+      transform: translate(-50%, 0);
+    }
+
+    .select-point-bar strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .select-point-bar span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .select-point-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    body.selecting-point .panel,
+    body.selecting-point .legend,
+    body.selecting-point .map-status {
+      display: none !important;
+    }
+
+    body.selecting-point .floating-actions,
+    body.selecting-point .map-switch {
+      display: none !important;
+    }
+
+    body.selecting-point.desktop-point-select #map {
+      cursor: crosshair;
+    }
+
+    body.selecting-point.desktop-point-select .leaflet-container {
+      cursor: crosshair !important;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .popup-title {
+      font-weight: 900;
+      font-size: 14px;
+      margin: 0 0 4px;
+    }
+
+    .popup-meta {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .popup-list {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .popup-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .popup-list span { color: var(--muted); }
+    .popup-actions { display: flex; gap: 7px; }
+    .popup-actions button {
+      border: 0;
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .leaflet-control-layers {
+      border-radius: 14px !important;
+      border: 1px solid var(--line) !important;
+      box-shadow: var(--shadow) !important;
+      overflow: hidden;
+    }
+
+
+    .mode-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 9px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mini-btn.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .mini-btn.danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .map-switch {
+      position: absolute;
+      right: 14px;
+      top: calc(94px + env(safe-area-inset-top));
+      z-index: 770;
+      border-radius: 18px;
+      padding: 5px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .map-switch button {
+      appearance: none;
+      border: 0;
+      border-radius: 13px;
+      padding: 10px 12px;
+      background: transparent;
+      color: #334155;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      min-width: 74px;
+    }
+
+    .map-switch button.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 8px 18px rgba(15, 118, 110, 0.22);
+    }
+
+
+    .version-tag {
+      position: absolute;
+      left: 14px;
+      top: calc(94px + env(safe-area-inset-top));
+      z-index: 740;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(226,232,240,0.9);
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 8px 22px rgba(15,23,42,0.1);
+      pointer-events: none;
+    }
+
+    .pin-input {
+      letter-spacing: 0.28em;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        left: 10px;
+        right: 10px;
+        top: calc(8px + env(safe-area-inset-top));
+        grid-template-columns: 1fr;
+      }
+
+      .brand { padding: 9px; }
+      .brand-logo { width: 84px; height: 37px; border-radius: 12px; }
+      .brand-logo span { font-size: 8px; }
+      .brand-logo b { font-size: 11px; }
+      .brand h1 { font-size: 15px; }
+      .brand p { font-size: 11px; }
+
+      .mode-card {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 8px 10px;
+      }
+
+      .panel {
+        left: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        width: calc(100vw - 20px);
+      }
+
+      .panel-body { gap: 8px; padding: 10px 12px 12px; }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .summary-item { padding: 7px; }
+      .summary-item b { font-size: 16px; }
+      .filters { grid-template-columns: 1fr; }
+      .legend { display: none; }
+      .map-status { display: none; }
+      .floating-actions { right: 10px; bottom: calc(260px + env(safe-area-inset-bottom)); }
+      .map-switch { right: 10px; top: calc(112px + env(safe-area-inset-top)); }
+      .map-switch button { min-width: 68px; padding: 9px 10px; font-size: 11px; }
+      .version-tag { left: 10px; top: calc(112px + env(safe-area-inset-top)); }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: span 1; }
+      .resident-row {
+        grid-template-columns: 28px 1fr 34px;
+        align-items: center;
+      }
+      .resident-row label { grid-column: 1 / -1; }
+      .resident-row .resident-index { grid-column: 1; grid-row: 1; }
+      .resident-row .resident-remove { grid-column: 3; grid-row: 1; justify-self: end; }
+    }
+
+
+    @media (max-width: 760px) {
+      body { padding: 0; }
+
+      .topbar {
+        left: 8px;
+        right: 8px;
+        top: calc(6px + env(safe-area-inset-top));
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .brand {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 7px 8px;
+        border-radius: 16px;
+      }
+
+      .brand-logo {
+        width: 78px;
+        height: 32px;
+        border-radius: 11px;
+      }
+      .brand-logo span { font-size: 7px; margin-top: 1px; }
+      .brand-logo b { font-size: 10px; }
+
+      .brand h1 { font-size: 14px; }
+      .brand p { display: none; }
+
+      .mode-card {
+        flex: 0 0 auto;
+        min-width: 102px;
+        padding: 7px;
+        border-radius: 16px;
+        gap: 4px;
+      }
+
+      .mode-row:first-child > span:first-child,
+      #modeHint { display: none; }
+
+      .mode-actions { width: 100%; justify-content: flex-end; }
+      .mini-btn { padding: 6px 10px; font-size: 11px; }
+      .pill { font-size: 11px; padding: 4px 9px; }
+
+      .map-switch {
+        right: 8px;
+        top: calc(63px + env(safe-area-inset-top));
+        border-radius: 16px;
+        padding: 4px;
+        gap: 3px;
+      }
+
+      .map-switch button {
+        min-width: 52px;
+        padding: 7px 8px;
+        font-size: 11px;
+        border-radius: 12px;
+      }
+
+      .version-tag { display: none; }
+      .add-hint {
+        top: calc(109px + env(safe-area-inset-top));
+        max-width: calc(100vw - 16px);
+        font-size: 11px;
+        padding: 7px 10px;
+      }
+
+      .panel {
+        left: 8px;
+        right: 8px;
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        width: auto;
+        max-width: none;
+        border-radius: 22px;
+        transition: transform 0.22s ease, max-height 0.22s ease;
+      }
+
+      .panel-head {
+        padding: 10px 12px;
+        min-height: 64px;
+        cursor: pointer;
+      }
+
+      .panel-head strong { font-size: 14px; }
+      .panel-head small {
+        font-size: 11px;
+        max-width: 72vw;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .sheet-toggle { display: grid; }
+
+      .panel.collapsed .panel-body { display: none; }
+      .panel.collapsed .panel-head small { display: none; }
+      .panel.collapsed .panel-head { min-height: 58px; }
+      .panel.expanded {
+        max-height: min(68vh, 560px);
+      }
+      .panel.expanded .panel-body {
+        max-height: calc(min(68vh, 560px) - 66px);
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .panel-body { gap: 8px; padding: 10px 12px 12px; }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+      .summary-item { padding: 7px 8px; border-radius: 13px; }
+      .summary-item span { font-size: 10px; }
+      .summary-item b { font-size: 16px; }
+      .filters { grid-template-columns: 1fr; }
+      input, select, textarea { padding: 9px 10px; border-radius: 12px; }
+
+      .floating-actions {
+        right: 8px;
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        gap: 7px;
+      }
+
+      .floating-actions button {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0;
+        border-radius: 15px;
+        font-size: 18px;
+      }
+
+      .legend, .map-status { display: none; }
+      .toast { bottom: calc(84px + env(safe-area-inset-bottom)); font-size: 12px; }
+      .leaflet-control-zoom { display: none; }
+      .leaflet-control-attribution { font-size: 10px; }
+
+      .select-point-bar {
+        left: 8px;
+        right: 8px;
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        width: auto;
+        transform: translateY(18px);
+        grid-template-columns: 1fr;
+        gap: 10px;
+        border-radius: 22px;
+      }
+
+      .select-point-bar.show { transform: translateY(0); }
+      .select-point-actions { display: grid; grid-template-columns: 1fr 1.3fr; }
+      .center-pin-overlay { width: 58px; height: 68px; }
+      .center-pin-svg { width: 52px; height: 66px; }
+
+      .modal-backdrop {
+        align-items: flex-end;
+        padding: 10px;
+      }
+      .modal {
+        width: 100%;
+        max-height: calc(92vh - env(safe-area-inset-top));
+        border-radius: 22px 22px 12px 12px;
+      }
+
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: span 1; }
+      .resident-row {
+        grid-template-columns: 28px 1fr 34px;
+        align-items: center;
+      }
+      .resident-row label { grid-column: 1 / -1; }
+      .resident-row .resident-index { grid-column: 1; grid-row: 1; }
+      .resident-row .resident-remove { grid-column: 3; grid-row: 1; justify-self: end; }
+    }
+
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo"><span>Preng</span><b>People</b></div>
+      <div style="min-width:0;">
+        <h1>แผนที่ประชากร ตำบลเปร็ง</h1>
+        <p>Preng Population Map · Version 5.6 · local prototype</p>
+      </div>
+    </div>
+
+    <div class="mode-card">
+      <div class="mode-row"><span>Mode</span><span id="modePill" class="pill">Viewer</span></div>
+      <div class="mode-row">
+        <span id="modeHint">ดูข้อมูลแบบย่อ</span>
+        <span class="mode-actions">
+          <button id="loginBtn" class="mini-btn primary" type="button">Admin</button>
+          <button id="logoutBtn" class="mini-btn danger" type="button" hidden>Logout</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="map-switch" aria-label="สลับรูปแบบแผนที่">
+    <button id="normalLayerBtn" class="active" type="button">แผนที่</button>
+    <button id="aerialLayerBtn" type="button">ภาพถ่าย</button>
+  </div>
+
+  <div class="version-tag">v5.6 · people form</div>
+  <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
+
+  <section id="dataPanel" class="panel">
+    <div class="panel-head" id="panelHead">
+      <div class="panel-title-block">
+        <strong>ข้อมูลบ้านในพื้นที่</strong>
+        <small id="panelSubtitle">Viewer: เห็นเฉพาะข้อมูลย่อ · ข้อมูลยังอยู่เฉพาะเครื่องนี้</small>
+      </div>
+      <div class="panel-head-actions">
+        <span id="storagePill" class="pill warning">local</span>
+        <button id="sheetToggle" class="sheet-toggle" type="button" aria-label="พับหรือขยายแผงข้อมูล">⌃</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="summary-grid">
+        <div class="summary-item"><span>บ้านทั้งหมด</span><b id="sumHouses">0</b></div>
+        <div class="summary-item"><span>ผู้อยู่อาศัย</span><b id="sumResidents">0</b></div>
+        <div class="summary-item"><span>กลุ่มติดตาม</span><b id="sumRisk">0</b></div>
+      </div>
+      <input id="searchInput" type="search" placeholder="Viewer: ค้นหาตามหมู่ / สถานะ" />
+      <div class="filters">
+        <select id="villageFilter"></select>
+        <select id="statusFilter">
+          <option value="all">ทุกสถานะ</option>
+          <option value="general">ปกติ</option>
+          <option value="elderly">ผู้สูงอายุ</option>
+          <option value="bedridden">ผู้ป่วยติดเตียง</option>
+          <option value="chronic">กลุ่มเสี่ยง</option>
+        </select>
+      </div>
+      <p id="modeNote" class="note">Viewer Mode: ดูแผนที่และข้อมูลแบบย่อเท่านั้น · หากต้องการเพิ่ม/แก้ไข/ลบ ให้เข้า Admin ด้วย PIN 6 หลัก</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="floating-actions">
+    <button id="addHouseBtn" class="add-house-btn" title="เพิ่มบ้าน" hidden>＋</button>
+    <button id="locateBtn" title="ตำแหน่งฉัน">◎</button>
+    <button id="resetBtn" title="กลับตำบลเปร็ง">⌂</button>
+    <button id="adminBtn" title="Admin Login">🔒</button>
+  </div>
+
+  <div class="legend">
+    <strong>สัญลักษณ์</strong>
+    <div class="legend-row"><span class="dot general"></span>ปกติ</div>
+    <div class="legend-row"><span class="dot elderly"></span>ผู้สูงอายุ</div>
+    <div class="legend-row"><span class="dot bedridden"></span>ผู้ป่วยติดเตียง</div>
+    <div class="legend-row"><span class="dot chronic"></span>กลุ่มเสี่ยง</div>
+  </div>
+
+  <div id="mapStatus" class="map-status">กำลังโหลดขอบเขตตำบลจริง...</div>
+  <div id="toast" class="toast"></div>
+
+  <div id="centerPinOverlay" class="center-pin-overlay" aria-hidden="true">
+    <svg class="center-pin-svg" viewBox="0 0 64 78" role="img" aria-label="หมุดกลางจอ">
+      <ellipse cx="32" cy="72" rx="13" ry="4.5" fill="rgba(15,23,42,0.20)"></ellipse>
+      <path d="M32 4C18.2 4 7 15.2 7 29c0 18.5 25 39 25 39s25-20.5 25-39C57 15.2 45.8 4 32 4Z" fill="#0f766e" stroke="white" stroke-width="4"></path>
+      <circle cx="32" cy="29" r="10.5" fill="white" opacity="0.98"></circle>
+      <circle cx="32" cy="29" r="5" fill="#14b8a6"></circle>
+    </svg>
+    <div class="center-pin-tip-dot"></div>
+  </div>
+
+  <div id="selectPointBar" class="select-point-bar" aria-live="polite">
+    <div>
+      <strong id="selectPointTitle">เลือกตำแหน่งบ้าน</strong>
+      <span id="selectPointText">เลื่อน/ซูมแผนที่ให้หมุดอยู่ตรงตำแหน่ง แล้วกดใช้ตำแหน่งนี้</span>
+    </div>
+    <div class="select-point-actions">
+      <button id="selectPointCancelBtn" class="btn btn-secondary" type="button" onclick="cancelAddPointMode()">ยกเลิก</button>
+      <button id="selectPointConfirmBtn" class="btn btn-primary" type="button" onclick="confirmCenterPoint()">ใช้ตำแหน่งนี้</button>
+    </div>
+  </div>
+
+  <div id="houseModal" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <div>
+          <h2 id="modalTitle">เพิ่มข้อมูลบ้าน</h2>
+          <p id="modalSubtitle">ตำแหน่งจะถูกบันทึกจากจุดที่เลือกไว้</p>
+        </div>
+        <button class="close-btn" onclick="closeModal()">×</button>
+      </header>
+      <div class="modal-body">
+        <div class="coord-line" id="coordDisplay">ตำแหน่ง: -</div>
+
+        <div class="form-section-title">ข้อมูลบ้าน</div>
+        <div class="form-grid">
+          <label>บ้านเลขที่<input id="houseNo" placeholder="เช่น 99/1" /></label>
+          <label>หมู่<select id="houseVillage"></select></label>
+          <label>สถานะบ้าน<select id="houseStatus">
+            <option value="general">ปกติ</option>
+            <option value="elderly">ผู้สูงอายุ</option>
+            <option value="bedridden">ผู้ป่วยติดเตียง</option>
+            <option value="chronic">กลุ่มเสี่ยง</option>
+          </select></label>
+          <label>เบอร์โทร<input id="phone" inputmode="tel" placeholder="เช่น 08x-xxx-xxxx" /></label>
+          <label>ชื่อเจ้าของบ้าน<input id="ownerName" placeholder="ชื่อเจ้าของบ้าน" /></label>
+          <label>ผู้ติดต่อ<input id="contactName" placeholder="ชื่อผู้ติดต่อ" /></label>
+        </div>
+
+        <div class="section-line">
+          <div class="form-section-title">รายชื่อผู้อยู่อาศัย</div>
+          <button id="addResidentBtn" class="add-row-btn" type="button">+ เพิ่มบรรทัด</button>
+        </div>
+        <div id="residentRows" class="resident-rows" aria-label="รายชื่อผู้อยู่อาศัย"></div>
+
+        <label>หมายเหตุ<textarea id="note" rows="3" placeholder="ข้อมูลทดสอบ / หมายเหตุการเยี่ยมบ้าน"></textarea></label>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+          <button id="deleteBtn" class="btn btn-danger" onclick="deleteCurrentHouse()" style="display:none;">ลบ</button>
+          <button class="btn btn-primary" onclick="saveHouse()">บันทึก</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="adminModal" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <div>
+          <h2>Admin Login</h2>
+          <p>Prototype: ใช้ PIN 6 หลักเพื่อเปิดโหมดเพิ่ม/แก้ไข/ลบข้อมูลในเครื่องนี้</p>
+        </div>
+        <button class="close-btn" onclick="closeAdminModal()">×</button>
+      </header>
+      <div class="modal-body">
+        <label>PIN 6 หลัก
+          <input id="adminPin" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" />
+        </label>
+        <p class="note">PIN ทดสอบเริ่มต้นคือ <b>123456</b> และแก้ได้ในตัวแปร <code>ADMIN_PIN</code> ภายในไฟล์ index.html · เวอร์ชันนี้ยังไม่ใช่ระบบความปลอดภัยจริง</p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="closeAdminModal()">ยกเลิก</button>
+          <button class="btn btn-primary" onclick="loginAdmin()">เข้าสู่ Admin</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const VERSION = 'v5.6';
+    const ADMIN_PIN = '123456'; // Prototype only: เปลี่ยน PIN 6 หลักตรงนี้ก่อนส่งให้ผู้ทดลอง
+    const STORAGE_KEY = 'preng-health-map-v4-houses'; // keep old local data when upgrading from v4.x to v5
+    const BOUNDARY_STORAGE_KEY = 'preng-health-map-custom-boundary-v1';
+    const PRENG_CENTER = [13.6728, 100.8785];
+    const INITIAL_BOUNDS = [[13.643, 100.838], [13.704, 100.915]];
+
+    const STATUS_LABEL = {
+      general: 'ปกติ',
+      elderly: 'ผู้สูงอายุ',
+      bedridden: 'ผู้ป่วยติดเตียง',
+      chronic: 'กลุ่มเสี่ยง',
+      empty: 'ไม่มีผู้อยู่อาศัย'
+    };
+
+    const VILLAGES = [
+      { moo: '1', name: 'บ้านปากคลองประเวศน์', lat: 13.679945702632963, lon: 100.90487346053123 },
+      { moo: '2', name: 'บ้านเปร็ง', lat: 13.678087531743307, lon: 100.89895650744438 },
+      { moo: '3', name: 'บ้านคลองเปร็ง', lat: 13.657400382615249, lon: 100.89083880186081 },
+      { moo: '4', name: 'บ้านวัดเปร็ง', lat: 13.682057953410965, lon: 100.89520677924156 },
+      { moo: '5', name: 'บ้านปากคลองเดโช', lat: 13.690650097052973, lon: 100.87453097105026 },
+      { moo: '6', name: 'บ้านคลองสรั่งบุญ', lat: 13.658412954952201, lon: 100.86790189146996 },
+      { moo: '7', name: 'บ้านคลองเจ้า', lat: 13.686288913219032, lon: 100.86903780698776 },
+      { moo: '8', name: 'บ้านท่าข้าม', lat: 13.666742728603941, lon: 100.84885016083717 },
+      { moo: '9', name: 'บ้านกาหลง', lat: 13.665680672775233, lon: 100.86582317948341 }
+    ];
+
+    // Fallback shape is only used if the official boundary service cannot be loaded.
+    const FALLBACK_PRENG_BOUNDARY = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: { NAME3: 'เปร็ง', source: 'fallback-simplified' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [100.8420, 13.6675], [100.8515, 13.6510], [100.8835, 13.6495],
+            [100.9045, 13.6585], [100.9130, 13.6785], [100.9035, 13.6940],
+            [100.8750, 13.7040], [100.8540, 13.6925], [100.8420, 13.6675]
+          ]]
+        }
+      }]
+    };
+
+    const normalMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    });
+
+    const aerialMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri'
+    });
+
+    const map = L.map('map', {
+      center: PRENG_CENTER,
+      zoom: 15,
+      minZoom: 13,
+      maxZoom: 21,
+      layers: [normalMap],
+      zoomControl: false,
+      attributionControl: true,
+      maxBounds: INITIAL_BOUNDS,
+      maxBoundsViscosity: 0.75,
+      preferCanvas: true
+    });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    const boundaryGroup = L.layerGroup().addTo(map);
+    const villageGroup = L.layerGroup().addTo(map);
+    const houseGroup = L.layerGroup().addTo(map);
+    const currentLocationGroup = L.layerGroup().addTo(map);
+    const selectedPointGroup = L.layerGroup().addTo(map);
+
+    let prengBoundaryFeature = null;
+    let prengBounds = L.latLngBounds(INITIAL_BOUNDS);
+    let houses = loadHouses();
+    let isAdmin = sessionStorage.getItem('preng-health-admin-session') === 'true';
+    let activeBaseLayer = 'normal';
+    let currentPoint = null;
+    let editingHouseId = null;
+    let isSelectingPoint = false;
+
+    initForms();
+    updateModeUI();
+    renderHouses();
+    loadOfficialBoundary();
+
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 760px)').matches;
+    }
+
+    function useCenterPinMode() {
+      const ua = navigator.userAgent || '';
+      const isPhoneOrTablet = /Android|iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      return isMobileLayout() || isPhoneOrTablet;
+    }
+
+    function updateAddModeHint() {
+      const addHint = document.getElementById('addHint');
+      if (!addHint) return;
+      addHint.textContent = useCenterPinMode()
+        ? 'Admin: กด + เพิ่มบ้าน แล้วเลื่อนแผนที่ให้หมุดกลางจอตรงบ้าน'
+        : 'Admin: กด + เพิ่มบ้าน แล้วคลิกตำแหน่งบ้านบนแผนที่';
+    }
+
+    function initResponsiveLayout() {
+      const panel = document.getElementById('dataPanel');
+      const toggle = document.getElementById('sheetToggle');
+      if (!panel || !toggle) return;
+      if (!panel.classList.contains('expanded') && !panel.classList.contains('collapsed')) {
+        panel.classList.add('collapsed');
+      }
+      toggle.style.display = 'grid';
+      updateSheetToggle();
+      updateAddModeHint();
+      setTimeout(() => map.invalidateSize(), 120);
+    }
+
+    function togglePanelSheet() {
+      const panel = document.getElementById('dataPanel');
+      if (panel.classList.contains('expanded')) {
+        panel.classList.remove('expanded');
+        panel.classList.add('collapsed');
+      } else {
+        panel.classList.remove('collapsed');
+        panel.classList.add('expanded');
+      }
+      updateSheetToggle();
+      setTimeout(() => map.invalidateSize(), 160);
+    }
+
+    function updateSheetToggle() {
+      const panel = document.getElementById('dataPanel');
+      const toggle = document.getElementById('sheetToggle');
+      if (!panel || !toggle) return;
+      toggle.textContent = panel.classList.contains('expanded') ? '⌄' : '⌃';
+      toggle.setAttribute('aria-label', panel.classList.contains('expanded') ? 'พับแผงข้อมูล' : 'ขยายแผงข้อมูล');
+    }
+
+    function applyBoundaryViewport(options = {}) {
+      const mobile = isMobileLayout();
+      const pad = mobile ? 0.13 : 0.20;
+      const fitPad = mobile ? 0.06 : 0.03;
+      const padding = mobile ? [28, 28] : [18, 18];
+      map.setMaxBounds(prengBounds.pad(pad));
+      map.setMinZoom(mobile ? 12 : 13);
+      map.fitBounds(prengBounds.pad(fitPad), { animate: !!options.animate, padding });
+    }
+
+    function buildBoundaryUrl() {
+      const base = 'https://pherportal.moph.go.th/arcgis/rest/services/MOPH_DATA/tambon/MapServer/0/query';
+      const params = new URLSearchParams({
+        where: "NAME1='สมุทรปราการ' AND NAME2='บางบ่อ' AND NAME3='เปร็ง'",
+        outFields: 'ADMIN_ID3,NAME1,NAME2,NAME3,POP_YEAR,POPULATION,HOUSE',
+        returnGeometry: 'true',
+        f: 'geojson'
+      });
+      return `${base}?${params.toString()}`;
+    }
+
+    async function loadOfficialBoundary() {
+      // Version 5.6.1: use the hard-coded/official boundary flow only.
+      // If the boundary is updated in the future, update the boundary source in code.
+      localStorage.removeItem(BOUNDARY_STORAGE_KEY);
+      setStatus('กำลังโหลดขอบเขตตำบลจริง...');
+      try {
+        const response = await fetch(buildBoundaryUrl(), { cache: 'force-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const geojson = await response.json();
+        if (!geojson.features || geojson.features.length === 0) throw new Error('No boundary feature');
+        drawBoundary(geojson, 'official');
+        setStatus('ขอบเขตตำบล: MOPH ArcGIS · ไม่มีเส้นแบ่งหมู่ที่ไม่เป็นทางการ');
+      } catch (error) {
+        console.warn('Boundary fetch failed. Using fallback boundary.', error);
+        drawBoundary(FALLBACK_PRENG_BOUNDARY, 'fallback');
+        setStatus('ใช้ fallback boundary · ตรวจสอบเน็ต/CORS หากต้องการขอบเขตจริง');
+        showToast('โหลดขอบเขตจริงไม่สำเร็จ จึงใช้เส้น fallback ชั่วคราว');
+      }
+    }
+
+    function drawBoundary(geojson, sourceType) {
+      boundaryGroup.clearLayers();
+      prengBoundaryFeature = geojson.features[0];
+
+      const boundaryLayer = L.geoJSON(geojson, {
+        interactive: false,
+        style: {
+          color: '#0f766e',
+          weight: 3,
+          opacity: 1,
+          fillColor: '#14b8a6',
+          fillOpacity: 0.07
+        }
+      }).addTo(boundaryGroup);
+
+      prengBounds = boundaryLayer.getBounds();
+      applyBoundaryViewport({ animate: false });
+
+      addOutsideMask(prengBoundaryFeature);
+      // Moo/village working boundaries and labels removed in v4.1 until official data is available.
+      renderHouses();
+
+      if (sourceType === 'custom') {
+        setStatus('ขอบเขตตำบล: Custom GeoJSON · แก้ไขได้โดยอัปโหลดไฟล์ใหม่ใน Admin Mode');
+      } else if (sourceType === 'official') {
+        const props = prengBoundaryFeature.properties || {};
+        const pop = props.POPULATION ? Number(props.POPULATION).toLocaleString('th-TH') : '-';
+        const house = props.HOUSE ? Number(props.HOUSE).toLocaleString('th-TH') : '-';
+        boundaryLayer.bindPopup(`<b>ตำบล${props.NAME3 || 'เปร็ง'}</b><br>อำเภอ${props.NAME2 || 'บางบ่อ'} จังหวัด${props.NAME1 || 'สมุทรปราการ'}<br>ประชากร: ${pop}<br>บ้าน: ${house}`);
+      }
+    }
+
+    function normalizeBoundaryGeoJSON(input) {
+      if (!input || typeof input !== 'object') throw new Error('Invalid GeoJSON');
+      let featureCollection = input;
+      if (input.type === 'Feature') {
+        featureCollection = { type: 'FeatureCollection', features: [input] };
+      }
+      if (input.type === 'GeometryCollection') {
+        featureCollection = {
+          type: 'FeatureCollection',
+          features: input.geometries.map((geometry, index) => ({ type: 'Feature', properties: { index }, geometry }))
+        };
+      }
+      if (featureCollection.type !== 'FeatureCollection' || !Array.isArray(featureCollection.features)) {
+        throw new Error('Expected FeatureCollection or Feature');
+      }
+      const polygonFeature = featureCollection.features.find(feature => {
+        const type = feature && feature.geometry && feature.geometry.type;
+        return type === 'Polygon' || type === 'MultiPolygon';
+      });
+      if (!polygonFeature) throw new Error('No Polygon or MultiPolygon feature');
+      return { type: 'FeatureCollection', features: [polygonFeature] };
+    }
+
+    function loadCustomBoundary() {
+      try {
+        const raw = localStorage.getItem(BOUNDARY_STORAGE_KEY);
+        if (!raw) return null;
+        return normalizeBoundaryGeoJSON(JSON.parse(raw));
+      } catch (error) {
+        console.warn('Invalid custom boundary. Removing it.', error);
+        localStorage.removeItem(BOUNDARY_STORAGE_KEY);
+        return null;
+      }
+    }
+
+    async function handleBoundaryUpload(file) {
+      if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่อัปโหลดขอบเขตได้'); return; }
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const geojson = normalizeBoundaryGeoJSON(JSON.parse(text));
+        localStorage.setItem(BOUNDARY_STORAGE_KEY, JSON.stringify(geojson));
+        drawBoundary(geojson, 'custom');
+        showToast('อัปโหลดขอบเขตใหม่แล้ว');
+      } catch (error) {
+        console.error(error);
+        showToast('ไฟล์ขอบเขตไม่ถูกต้อง ต้องเป็น GeoJSON แบบ Polygon/MultiPolygon');
+      }
+    }
+
+    function resetBoundaryToOfficial() {
+      if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่จัดการขอบเขตได้'); return; }
+      localStorage.removeItem(BOUNDARY_STORAGE_KEY);
+      boundaryGroup.clearLayers();
+      prengBoundaryFeature = null;
+      prengBounds = L.latLngBounds(INITIAL_BOUNDS);
+      loadOfficialBoundary();
+      showToast('รีเซ็ตกลับไปใช้ขอบเขตจาก MOPH แล้ว');
+    }
+
+    function addOutsideMask(feature) {
+      const outerWorld = [[-85, -360], [-85, 360], [85, 360], [85, -360]];
+      const masks = [];
+      const geom = feature.geometry;
+      if (!geom) return;
+
+      const polygons = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+      polygons.forEach(poly => {
+        const rings = poly.map(ring => ring.map(([lng, lat]) => [lat, lng]));
+        masks.push(L.polygon([outerWorld, ...rings], {
+          stroke: false,
+          fillColor: '#0f172a',
+          fillOpacity: 0.36,
+          interactive: false,
+          pane: 'overlayPane'
+        }).addTo(boundaryGroup));
+      });
+    }
+
+    function addVillageWorkingBoundaries(boundaryFeature) {
+      if (!window.turf || !boundaryFeature) return;
+      try {
+        const points = turf.featureCollection(VILLAGES.map(v => turf.point([v.lon, v.lat], v)));
+        const bbox = turf.bbox(boundaryFeature);
+        const cells = turf.voronoi(points, { bbox });
+        if (!cells || !cells.features) throw new Error('Voronoi failed');
+
+        cells.features.forEach((cell, index) => {
+          if (!cell) return;
+          const nearest = findNearestVillage(cell);
+          let clipped = null;
+          try { clipped = turf.intersect(cell, boundaryFeature); } catch (e) { clipped = null; }
+          if (!clipped) return;
+          clipped.properties = nearest || { moo: String(index + 1), name: `หมู่ ${index + 1}` };
+
+          L.geoJSON(clipped, {
+            style: {
+              color: '#7c3aed',
+              weight: 1.8,
+              opacity: 0.86,
+              dashArray: '8,7',
+              fillColor: '#a855f7',
+              fillOpacity: 0.035
+            },
+            onEachFeature: (feature, layer) => {
+              const p = feature.properties || {};
+              layer.bindTooltip(`ม.${p.moo} ${p.name}<br><small>Working boundary จากจุดกลางหมู่</small>`, { sticky: true });
+            }
+          }).addTo(villageGroup);
+        });
+      } catch (error) {
+        console.warn('Village working boundary generation failed', error);
+      }
+    }
+
+    function findNearestVillage(cell) {
+      try {
+        const center = turf.centroid(cell);
+        let best = null;
+        let bestD = Infinity;
+        VILLAGES.forEach(v => {
+          const d = turf.distance(center, turf.point([v.lon, v.lat]), { units: 'kilometers' });
+          if (d < bestD) { bestD = d; best = v; }
+        });
+        return best;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function addVillageLabels() {
+      VILLAGES.forEach(v => {
+        const icon = L.divIcon({
+          className: 'village-label',
+          html: `<span>ม.${v.moo}</span>`,
+          iconSize: [58, 28],
+          iconAnchor: [29, 14]
+        });
+        L.marker([v.lat, v.lon], { icon, interactive: true, zIndexOffset: 1000 })
+          .bindTooltip(`ม.${v.moo} ${v.name}`, { direction: 'top' })
+          .addTo(villageGroup);
+      });
+    }
+
+    function initForms() {
+      const villageFilter = document.getElementById('villageFilter');
+      const houseVillage = document.getElementById('houseVillage');
+      villageFilter.innerHTML = '<option value="all">ทุกหมู่</option>' + VILLAGES.map(v => `<option value="${v.moo}">ม.${v.moo} ${v.name}</option>`).join('');
+      houseVillage.innerHTML = VILLAGES.map(v => `<option value="${v.moo}">ม.${v.moo} ${v.name}</option>`).join('');
+
+      document.getElementById('searchInput').addEventListener('input', renderHouses);
+      document.getElementById('villageFilter').addEventListener('change', renderHouses);
+      document.getElementById('statusFilter').addEventListener('change', renderHouses);
+
+      document.getElementById('locateBtn').addEventListener('click', locateMe);
+      document.getElementById('resetBtn').addEventListener('click', () => applyBoundaryViewport({ animate: true }));
+      document.getElementById('addHouseBtn').addEventListener('click', startAddPointMode);
+      document.getElementById('adminBtn').addEventListener('click', () => isAdmin ? logoutAdmin() : openAdminModal());
+      document.getElementById('loginBtn').addEventListener('click', openAdminModal);
+      document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
+      document.getElementById('normalLayerBtn').addEventListener('click', () => setBaseLayer('normal'));
+      document.getElementById('aerialLayerBtn').addEventListener('click', () => setBaseLayer('aerial'));
+      document.getElementById('adminPin').addEventListener('keydown', e => { if (e.key === 'Enter') loginAdmin(); });
+      document.getElementById('sheetToggle').addEventListener('click', togglePanelSheet);
+      document.getElementById('panelHead').addEventListener('click', e => {
+        if (e.target.closest('button')) return;
+        togglePanelSheet();
+      });
+      document.getElementById('addResidentBtn').addEventListener('click', () => addResidentRow({}));
+      document.getElementById('phone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9+\-\s]/g, '').slice(0, 18); });
+      initResponsiveLayout();
+      initCenterPinAdd();
+      window.addEventListener('resize', initResponsiveLayout);
+    }
+
+    function loadHouses() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (Array.isArray(stored)) return stored;
+      } catch (e) {}
+      return [
+        { id: uid(), houseNo: 'ทดลอง-01', village: '2', ownerName: 'ตัวอย่างเจ้าของบ้าน', contactName: 'ตัวอย่างผู้ติดต่อ', phone: '081-000-0001', residents: 1, status: 'general', people: [{ fullName: 'ตัวอย่าง คนทั่วไป', birthDate: '01/01/2530', citizenId: '1-2345-67890-12-3', status: 'general' }], note: 'ข้อมูลตัวอย่าง', lat: 13.6788, lng: 100.8976 },
+        { id: uid(), houseNo: 'ทดลอง-02', village: '7', ownerName: 'ตัวอย่างเจ้าของบ้าน', contactName: 'ตัวอย่างกลุ่มเสี่ยง', phone: '081-000-0002', residents: 1, status: 'chronic', people: [{ fullName: 'ตัวอย่าง กลุ่มเสี่ยง', birthDate: '02/02/2520', citizenId: '', status: 'chronic' }], note: 'ควรติดตาม', lat: 13.6848, lng: 100.8704 },
+        { id: uid(), houseNo: 'ทดลอง-03', village: '8', ownerName: 'ตัวอย่างเจ้าของบ้าน', contactName: 'ตัวอย่างผู้สูงอายุ', phone: '081-000-0003', residents: 1, status: 'elderly', people: [{ fullName: 'ตัวอย่าง ผู้สูงอายุ', birthDate: '03/03/2490', citizenId: '', status: 'elderly' }], note: 'เยี่ยมบ้านทุกเดือน', lat: 13.6666, lng: 100.8508 }
+      ];
+    }
+
+    function saveHouses() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(houses));
+    }
+
+    function renderHouses() {
+      houseGroup.clearLayers();
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const village = document.getElementById('villageFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      const filtered = houses.filter(h => {
+        const text = isAdmin
+          ? `${h.houseNo || ''} ${h.ownerName || ''} ${h.contactName || ''} ${h.phone || ''} ${buildPeopleSearchText(h)} ${h.note || ''} ${h.village || ''} ${STATUS_LABEL[h.status] || ''}`.toLowerCase()
+          : `${h.village || ''} ${STATUS_LABEL[h.status] || ''}`.toLowerCase();
+        return (!query || text.includes(query)) &&
+          (village === 'all' || h.village === village) &&
+          (status === 'all' || h.status === status);
+      });
+
+      filtered.forEach(h => {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="house-marker ${h.status || 'general'}"></div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 27],
+          popupAnchor: [0, -24]
+        });
+        L.marker([h.lat, h.lng], { icon })
+          .bindPopup(buildPopup(h))
+          .addTo(houseGroup);
+      });
+
+      updateSummary(filtered);
+    }
+
+    function buildPopup(h) {
+      const villageName = VILLAGES.find(v => v.moo === h.village)?.name || '';
+      if (!isAdmin) {
+        return `
+        <div>
+          <p class="popup-title">พื้นที่หมู่ ${escapeHtml(h.village || '-')}</p>
+          <p class="popup-meta">${escapeHtml(villageName)} · ${STATUS_LABEL[h.status] || '-'}</p>
+          <div class="popup-list">
+            <div><span>ผู้อยู่อาศัย</span><b>${personCount(h)}</b></div>
+            <div><span>สถานะ</span><b>${STATUS_LABEL[h.status] || '-'}</b></div>
+          </div>
+          <div class="popup-actions">
+            <button onclick="zoomToHouse('${h.id}')" style="background:#e0f2fe;color:#075985;">ซูม</button>
+          </div>
+        </div>`;
+      }
+
+      return `
+        <div>
+          <p class="popup-title">บ้านเลขที่ ${escapeHtml(h.houseNo || '-')}</p>
+          <p class="popup-meta">ม.${h.village || '-'} ${escapeHtml(villageName)} · ${STATUS_LABEL[h.status] || '-'}</p>
+          <div class="popup-list">
+            <div><span>เจ้าของบ้าน</span><b>${escapeHtml(h.ownerName || '-')}</b></div>
+            <div><span>ผู้ติดต่อ</span><b>${escapeHtml(h.contactName || h.ownerName || '-')}</b></div>
+            <div><span>เบอร์โทร</span><b>${escapeHtml(h.phone || '-')}</b></div>
+            <div><span>ผู้อยู่อาศัย</span><b>${personCount(h)}</b></div>
+            <div><span>สถานะบ้าน</span><b>${STATUS_LABEL[h.status] || '-'}</b></div>
+          </div>
+          ${buildPeoplePopup(h)}
+          <div style="font-size:12px;color:#64748b;margin-bottom:10px;">${escapeHtml(h.note || '')}</div>
+          <div class="popup-actions">
+            <button onclick="editHouse('${h.id}')" style="background:#ccfbf1;color:#115e59;">แก้ไข</button>
+            <button onclick="zoomToHouse('${h.id}')" style="background:#e0f2fe;color:#075985;">ซูม</button>
+          </div>
+        </div>`;
+    }
+
+    function updateSummary(list) {
+      const totalResidents = list.reduce((s, h) => s + personCount(h), 0);
+      const risk = list.filter(h => ['elderly', 'bedridden', 'chronic'].includes(h.status)).length;
+      document.getElementById('sumHouses').textContent = list.length.toLocaleString('th-TH');
+      document.getElementById('sumResidents').textContent = totalResidents.toLocaleString('th-TH');
+      document.getElementById('sumRisk').textContent = risk.toLocaleString('th-TH');
+    }
+
+    function zoomToHouse(id) {
+      const h = houses.find(x => x.id === id);
+      if (!h) return;
+      map.setView([h.lat, h.lng], 20, { animate: true });
+    }
+
+
+
+
+    function normalizePeople(h) {
+      if (Array.isArray(h.people)) return h.people;
+      const people = [];
+      if (h.ownerName) {
+        people.push({ fullName: h.ownerName, birthDate: '', citizenId: '', status: h.status || 'general' });
+      }
+      return people;
+    }
+
+    function personCount(h) {
+      const people = normalizePeople(h).filter(p => (p.fullName || p.citizenId || p.birthDate || '').trim() !== '');
+      return people.length || Number(h.residents || 0);
+    }
+
+    function formatCitizenId(value) {
+      const d = String(value || '').replace(/\D/g, '').slice(0, 13);
+      const parts = [d.slice(0, 1), d.slice(1, 5), d.slice(5, 10), d.slice(10, 12), d.slice(12, 13)].filter(Boolean);
+      return parts.join('-');
+    }
+
+    function formatBirthDate(value) {
+      const raw = String(value || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [y, m, d] = raw.split('-');
+        return `${d}/${m}/${Number(y) + 543}`;
+      }
+      const digits = raw.replace(/\D/g, '').slice(0, 8);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    }
+
+    function createStatusOptions(selected = 'general') {
+      return ['general', 'elderly', 'bedridden', 'chronic'].map(key =>
+        `<option value="${key}" ${selected === key ? 'selected' : ''}>${STATUS_LABEL[key]}</option>`
+      ).join('');
+    }
+
+    function addResidentRow(person = {}) {
+      const rows = document.getElementById('residentRows');
+      const row = document.createElement('div');
+      row.className = 'resident-row';
+      row.innerHTML = `
+        <div class="resident-index"></div>
+        <label>ชื่อสกุล<input class="person-name" placeholder="ชื่อ-สกุล" value="${escapeAttr(person.fullName || '')}" /></label>
+        <label>วันเกิด<input class="person-birth" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" value="${escapeAttr(formatBirthDate(person.birthDate || ''))}" /></label>
+        <label>เลขบัตรประชาชน<input class="person-id" inputmode="numeric" maxlength="17" placeholder="x-xxxx-xxxxx-xx-x" value="${escapeAttr(formatCitizenId(person.citizenId || ''))}" /></label>
+        <label>สถานะ<select class="person-status">${createStatusOptions(person.status || 'general')}</select></label>
+        <button class="resident-remove" type="button" title="ลบบรรทัด">×</button>
+      `;
+      rows.appendChild(row);
+      const idInput = row.querySelector('.person-id');
+      const birthInput = row.querySelector('.person-birth');
+      idInput.addEventListener('input', () => { idInput.value = formatCitizenId(idInput.value); });
+      birthInput.addEventListener('input', () => { birthInput.value = formatBirthDate(birthInput.value); });
+      row.querySelector('.resident-remove').addEventListener('click', () => {
+        if (rows.querySelectorAll('.resident-row').length <= 1) return;
+        row.remove();
+        renumberResidentRows();
+      });
+      renumberResidentRows();
+      return row;
+    }
+
+    function renumberResidentRows() {
+      const rows = [...document.querySelectorAll('#residentRows .resident-row')];
+      rows.forEach((row, index) => {
+        row.querySelector('.resident-index').textContent = index + 1;
+        row.querySelector('.resident-remove').disabled = rows.length <= 1;
+      });
+    }
+
+    function getPeopleFromForm() {
+      const people = [];
+      document.querySelectorAll('#residentRows .resident-row').forEach(row => {
+        const fullName = row.querySelector('.person-name').value.trim();
+        const birthDate = formatBirthDate(row.querySelector('.person-birth').value);
+        const citizenId = formatCitizenId(row.querySelector('.person-id').value);
+        const status = row.querySelector('.person-status').value || 'general';
+        if (fullName || birthDate || citizenId || status !== 'general') {
+          people.push({ fullName, birthDate, citizenId, status });
+        }
+      });
+      return people;
+    }
+
+    function setPeopleForm(people = []) {
+      const rows = document.getElementById('residentRows');
+      rows.innerHTML = '';
+      const list = Array.isArray(people) && people.length ? people : [{}];
+      list.forEach(person => addResidentRow(person));
+    }
+
+    function deriveStatusFromPeople(people, fallback = 'general') {
+      const priority = { bedridden: 4, chronic: 3, elderly: 2, general: 1, empty: 0 };
+      const base = fallback || 'general';
+      return (people || []).reduce((best, p) => (priority[p.status] || 1) > (priority[best] || 1) ? p.status : best, base);
+    }
+
+    function buildPeopleSearchText(h) {
+      return normalizePeople(h).map(p => `${p.fullName || ''} ${p.birthDate || ''} ${p.citizenId || ''} ${String(p.citizenId || '').replace(/\D/g, '')} ${STATUS_LABEL[p.status] || ''}`).join(' ');
+    }
+
+    function buildPeoplePopup(h) {
+      const people = normalizePeople(h).filter(p => p.fullName || p.birthDate || p.citizenId || p.status);
+      if (!people.length) return '';
+      return `<div class="resident-mini-list">${people.map((p, idx) => `<div><span>${idx + 1}. ${escapeHtml(p.fullName || '-')}</span><b>${STATUS_LABEL[p.status] || '-'}</b></div>`).join('')}</div>`;
+    }
+
+    function escapeAttr(value) {
+      return String(value || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    }
+
+    function editHouse(id) {
+      if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่แก้ไขข้อมูลได้'); return; }
+      const h = houses.find(x => x.id === id);
+      if (!h) return;
+      editingHouseId = id;
+      currentPoint = { lat: h.lat, lng: h.lng };
+      document.getElementById('modalTitle').textContent = 'แก้ไขข้อมูลบ้าน';
+      document.getElementById('modalSubtitle').textContent = `ตำแหน่ง: ${h.lat.toFixed(6)}, ${h.lng.toFixed(6)}`;
+      document.getElementById('coordDisplay').textContent = `ตำแหน่ง: ${h.lat.toFixed(6)}, ${h.lng.toFixed(6)}`;
+      document.getElementById('houseNo').value = h.houseNo || '';
+      document.getElementById('houseVillage').value = h.village || '1';
+      document.getElementById('ownerName').value = h.ownerName || '';
+      document.getElementById('contactName').value = h.contactName || h.ownerName || '';
+      document.getElementById('phone').value = h.phone || '';
+      document.getElementById('houseStatus').value = h.status || 'general';
+      setPeopleForm(normalizePeople(h));
+      document.getElementById('note').value = h.note || '';
+      document.getElementById('deleteBtn').style.display = 'block';
+      openModal();
+    }
+
+    function openCreateModal(latlng) {
+      if (!isAdmin) {
+        showToast('Viewer Mode: กรุณาเข้า Admin เพื่อเพิ่มจุดบ้าน');
+        return;
+      }
+      if (!isInsidePreng(latlng)) {
+        showToast('จุดนี้อยู่นอกเขตตำบลเปร็ง');
+        return;
+      }
+      editingHouseId = null;
+      currentPoint = latlng;
+      document.getElementById('modalTitle').textContent = 'เพิ่มข้อมูลบ้าน';
+      document.getElementById('modalSubtitle').textContent = `ตำแหน่ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+      document.getElementById('coordDisplay').textContent = `ตำแหน่ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+      document.getElementById('houseNo').value = '';
+      document.getElementById('houseVillage').value = nearestVillage(latlng)?.moo || '1';
+      document.getElementById('ownerName').value = '';
+      document.getElementById('contactName').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('houseStatus').value = 'general';
+      setPeopleForm([{}]);
+      document.getElementById('note').value = '';
+      document.getElementById('deleteBtn').style.display = 'none';
+      openModal();
+    }
+
+    function openModal() { document.getElementById('houseModal').classList.add('show'); }
+    function closeModal() {
+      document.getElementById('houseModal').classList.remove('show');
+      selectedPointGroup.clearLayers();
+    }
+
+    function saveHouse() {
+      if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่บันทึกข้อมูลได้'); return; }
+      if (!currentPoint) return;
+      const people = getPeopleFromForm();
+      const selectedStatus = document.getElementById('houseStatus').value || 'general';
+      const payload = {
+        id: editingHouseId || uid(),
+        houseNo: document.getElementById('houseNo').value.trim(),
+        village: document.getElementById('houseVillage').value,
+        ownerName: document.getElementById('ownerName').value.trim(),
+        contactName: document.getElementById('contactName').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        people,
+        residents: people.length,
+        status: deriveStatusFromPeople(people, selectedStatus),
+        note: document.getElementById('note').value.trim(),
+        lat: currentPoint.lat,
+        lng: currentPoint.lng,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (editingHouseId) {
+        houses = houses.map(h => h.id === editingHouseId ? { ...h, ...payload } : h);
+      } else {
+        houses.push(payload);
+      }
+      saveHouses();
+      renderHouses();
+      selectedPointGroup.clearLayers();
+      closeModal();
+      showToast('บันทึกข้อมูลบ้านแล้ว');
+    }
+
+    function deleteCurrentHouse() {
+      if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่ลบข้อมูลได้'); return; }
+      if (!editingHouseId) return;
+      if (!confirm('ลบข้อมูลบ้านนี้จากเครื่องนี้?')) return;
+      houses = houses.filter(h => h.id !== editingHouseId);
+      saveHouses();
+      renderHouses();
+      selectedPointGroup.clearLayers();
+      closeModal();
+      showToast('ลบข้อมูลแล้ว');
+    }
+
+
+    function openAdminModal() {
+      document.getElementById('adminPin').value = '';
+      document.getElementById('adminModal').classList.add('show');
+      setTimeout(() => document.getElementById('adminPin').focus(), 80);
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminModal').classList.remove('show');
+    }
+
+    function loginAdmin() {
+      const pin = document.getElementById('adminPin').value.trim();
+      if (pin !== ADMIN_PIN) {
+        showToast('PIN ไม่ถูกต้อง');
+        return;
+      }
+      isAdmin = true;
+      sessionStorage.setItem('preng-health-admin-session', 'true');
+      closeAdminModal();
+      updateModeUI();
+      renderHouses();
+      showToast(useCenterPinMode() ? 'เข้าสู่ Admin Mode แล้ว · กด + เพิ่มบ้าน เพื่อเลือกตำแหน่งด้วยหมุดกลางจอ' : 'เข้าสู่ Admin Mode แล้ว · กด + เพิ่มบ้าน แล้วคลิกตำแหน่งบนแผนที่');
+    }
+
+    function logoutAdmin() {
+      cancelAddPointMode();
+      isAdmin = false;
+      sessionStorage.removeItem('preng-health-admin-session');
+      updateModeUI();
+      renderHouses();
+      showToast('กลับสู่ Viewer Mode แล้ว');
+    }
+
+    function updateModeUI() {
+      const modePill = document.getElementById('modePill');
+      const modeHint = document.getElementById('modeHint');
+      const modeNote = document.getElementById('modeNote');
+      const panelSubtitle = document.getElementById('panelSubtitle');
+      const searchInput = document.getElementById('searchInput');
+      const addHint = document.getElementById('addHint');
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const adminBtn = document.getElementById('adminBtn');
+      const addHouseBtn = document.getElementById('addHouseBtn');
+
+      if (isAdmin) {
+        modePill.textContent = 'Admin';
+        modePill.className = 'pill warning';
+        modeHint.textContent = 'แก้ไขข้อมูลได้';
+        modeNote.textContent = useCenterPinMode() ? 'Admin Mode: กด + เพิ่มบ้าน แล้วเลื่อน/ซูมแผนที่ให้หมุดกลางจออยู่ตรงตำแหน่งบ้าน' : 'Admin Mode: กด + เพิ่มบ้าน แล้วคลิกตำแหน่งบ้านบนแผนที่';
+        panelSubtitle.textContent = useCenterPinMode() ? 'Admin: เห็นข้อมูลเต็ม · เพิ่มจุดด้วยหมุดกลางจอบนมือถือ' : 'Admin: เห็นข้อมูลเต็ม · เพิ่มจุดด้วยการคลิกบนแผนที่';
+        searchInput.placeholder = 'Admin: ค้นหาเลขที่บ้าน / ชื่อบุคคล / เลขบัตรประชาชน';
+        updateAddModeHint();
+        addHint.classList.add('show');
+        loginBtn.hidden = true;
+        logoutBtn.hidden = false;
+        adminBtn.textContent = '🔓';
+        adminBtn.title = 'Logout Admin';
+        addHouseBtn.hidden = false;
+      } else {
+        modePill.textContent = 'Viewer';
+        modePill.className = 'pill';
+        modeHint.textContent = 'ดูข้อมูลแบบย่อ';
+        modeNote.textContent = 'Viewer Mode: ดูแผนที่และข้อมูลแบบย่อเท่านั้น · หากต้องการเพิ่ม/แก้ไข/ลบ ให้เข้า Admin ด้วย PIN 6 หลัก';
+        panelSubtitle.textContent = 'Viewer: เห็นเฉพาะข้อมูลย่อ · ข้อมูลยังอยู่เฉพาะเครื่องนี้';
+        searchInput.placeholder = 'Viewer: ค้นหาตามหมู่ / สถานะ';
+        addHint.classList.remove('show');
+        selectedPointGroup.clearLayers();
+        cancelAddPointMode(false);
+        loginBtn.hidden = false;
+        logoutBtn.hidden = true;
+        adminBtn.textContent = '🔒';
+        adminBtn.title = 'Admin Login';
+        addHouseBtn.hidden = true;
+      }
+    }
+
+    function setBaseLayer(type) {
+      if (type === activeBaseLayer) return;
+      if (type === 'normal') {
+        if (map.hasLayer(aerialMap)) map.removeLayer(aerialMap);
+        normalMap.addTo(map);
+      } else {
+        if (map.hasLayer(normalMap)) map.removeLayer(normalMap);
+        aerialMap.addTo(map);
+      }
+      activeBaseLayer = type;
+      document.getElementById('normalLayerBtn').classList.toggle('active', type === 'normal');
+      document.getElementById('aerialLayerBtn').classList.toggle('active', type === 'aerial');
+    }
+
+    function nearestVillage(latlng) {
+      if (!window.turf) return VILLAGES[0];
+      const p = turf.point([latlng.lng, latlng.lat]);
+      let best = VILLAGES[0];
+      let bestD = Infinity;
+      VILLAGES.forEach(v => {
+        const d = turf.distance(p, turf.point([v.lon, v.lat]), { units: 'kilometers' });
+        if (d < bestD) { bestD = d; best = v; }
+      });
+      return best;
+    }
+
+    function isInsidePreng(latlng) {
+      if (!prengBoundaryFeature || !window.turf) return prengBounds.contains(latlng);
+      try {
+        return turf.booleanPointInPolygon(turf.point([latlng.lng, latlng.lat]), prengBoundaryFeature);
+      } catch (e) {
+        return prengBounds.contains(latlng);
+      }
+    }
+
+    function initCenterPinAdd() {
+      const container = map.getContainer();
+      container.addEventListener('contextmenu', e => e.preventDefault());
+      map.on('click', handleMapClickForAdd);
+      map.on('popupopen', () => {
+        if (isSelectingPoint) map.closePopup();
+      });
+    }
+
+    function handleMapClickForAdd(e) {
+      if (!isSelectingPoint || !isAdmin || useCenterPinMode()) return;
+      if (!isInsidePreng(e.latlng)) {
+        showToast('จุดนี้อยู่นอกเขตตำบลเปร็ง');
+        return;
+      }
+      showSelectedPoint(e.latlng);
+      cancelAddPointMode(false);
+      map.panTo(e.latlng, { animate: true });
+      showToast('เลือกตำแหน่งแล้ว กำลังเปิดฟอร์มกรอกข้อมูล');
+      setTimeout(() => openCreateModal(e.latlng), 260);
+    }
+
+    function setSelectPointBarMode(mode) {
+      const title = document.getElementById('selectPointTitle');
+      const text = document.getElementById('selectPointText');
+      const confirmBtn = document.getElementById('selectPointConfirmBtn');
+      if (mode === 'center') {
+        title.textContent = 'เลือกตำแหน่งบ้าน';
+        text.textContent = 'เลื่อน/ซูมแผนที่ให้หมุดกลางจออยู่ตรงบ้าน แล้วกดใช้ตำแหน่งนี้';
+        confirmBtn.hidden = false;
+      } else {
+        title.textContent = 'เลือกตำแหน่งบ้าน';
+        text.textContent = 'คลิกบนแผนที่ตรงตำแหน่งบ้าน ระบบจะเปิดฟอร์มกรอกข้อมูลทันที';
+        confirmBtn.hidden = true;
+      }
+    }
+
+    function startAddPointMode() {
+      if (!isAdmin) {
+        showToast('Viewer Mode: กรุณาเข้า Admin เพื่อเพิ่มจุดบ้าน');
+        return;
+      }
+      const centerMode = useCenterPinMode();
+      isSelectingPoint = true;
+      selectedPointGroup.clearLayers();
+      map.closePopup();
+      document.body.classList.add('selecting-point');
+      document.body.classList.toggle('desktop-point-select', !centerMode);
+      document.body.classList.toggle('center-pin-select', centerMode);
+      document.getElementById('centerPinOverlay').classList.toggle('show', centerMode);
+      document.getElementById('selectPointBar').classList.add('show');
+      setSelectPointBarMode(centerMode ? 'center' : 'click');
+      document.getElementById('addHint').classList.remove('show');
+      map.getContainer().style.cursor = centerMode ? '' : 'crosshair';
+
+      const panel = document.getElementById('dataPanel');
+      if (isMobileLayout()) {
+        panel.classList.remove('expanded');
+        panel.classList.add('collapsed');
+        updateSheetToggle();
+      }
+      showToast(centerMode
+        ? 'เลื่อน/ซูมแผนที่ให้หมุดกลางจออยู่ตรงตำแหน่งบ้าน'
+        : 'คลิกบนแผนที่ตรงตำแหน่งบ้านเพื่อเปิดฟอร์ม');
+    }
+
+    function cancelAddPointMode(clearPoint = true) {
+      if (!isSelectingPoint && !document.body.classList.contains('selecting-point')) return;
+      isSelectingPoint = false;
+      document.body.classList.remove('selecting-point', 'desktop-point-select', 'center-pin-select');
+      map.getContainer().style.cursor = '';
+      document.getElementById('centerPinOverlay').classList.remove('show');
+      document.getElementById('selectPointBar').classList.remove('show');
+      if (clearPoint) selectedPointGroup.clearLayers();
+      if (isAdmin) {
+        updateAddModeHint();
+        document.getElementById('addHint').classList.add('show');
+      }
+    }
+
+    function confirmCenterPoint() {
+      if (!isAdmin) {
+        cancelAddPointMode();
+        showToast('Viewer Mode: กรุณาเข้า Admin เพื่อเพิ่มจุดบ้าน');
+        return;
+      }
+      const center = map.getCenter();
+      const latlng = L.latLng(center.lat, center.lng);
+      if (!isInsidePreng(latlng)) {
+        showToast('หมุดกลางจออยู่นอกเขตตำบลเปร็ง');
+        return;
+      }
+      showSelectedPoint(latlng);
+      cancelAddPointMode(false);
+      showToast('เลือกตำแหน่งแล้ว กำลังเปิดฟอร์มกรอกข้อมูล');
+      setTimeout(() => openCreateModal(latlng), 180);
+    }
+
+    function selectPointForCreate(latlng) {
+      if (!isAdmin) {
+        showToast('Viewer Mode: กรุณาเข้า Admin เพื่อเพิ่มจุดบ้าน');
+        return;
+      }
+      if (!isInsidePreng(latlng)) {
+        showToast('จุดนี้อยู่นอกเขตตำบลเปร็ง');
+        return;
+      }
+      showSelectedPoint(latlng);
+      map.panTo(latlng, { animate: true });
+      showToast('เลือกจุดแล้ว กำลังเปิดฟอร์มกรอกข้อมูล');
+      setTimeout(() => openCreateModal(latlng), 420);
+    }
+
+    function showSelectedPoint(latlng) {
+      selectedPointGroup.clearLayers();
+      const icon = L.divIcon({
+        className: '',
+        html: '<div class="selected-point-icon"></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+      L.marker(latlng, { icon, interactive: false, zIndexOffset: 2000 }).addTo(selectedPointGroup);
+    }
+
+    function locateMe() {
+      if (!navigator.geolocation) {
+        showToast('เครื่องนี้ไม่รองรับ GPS');
+        return;
+      }
+      showToast('กำลังหาตำแหน่ง...');
+      navigator.geolocation.getCurrentPosition(pos => {
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        currentLocationGroup.clearLayers();
+        L.circleMarker(latlng, {
+          radius: 9,
+          color: '#2563eb',
+          weight: 3,
+          fillColor: '#60a5fa',
+          fillOpacity: 0.5
+        }).addTo(currentLocationGroup).bindPopup('ตำแหน่งของฉัน').openPopup();
+        map.setView(latlng, 19, { animate: true });
+      }, () => showToast('ไม่สามารถเข้าถึงตำแหน่งได้'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+    }
+
+    function setStatus(text) {
+      document.getElementById('mapStatus').textContent = text;
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    function uid() {
+      return `h_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+  </script>
+</body>
+</html>
