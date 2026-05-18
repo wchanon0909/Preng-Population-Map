@@ -270,6 +270,20 @@
       gap: 8px;
     }
 
+    .report-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .report-actions[hidden] {
+      display: none !important;
+    }
+
+    .report-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
     input, select, textarea {
       width: 100%;
       border: 1px solid var(--line);
@@ -1270,7 +1284,7 @@
       <div class="brand-logo"><span>Preng</span><b>People</b></div>
       <div style="min-width:0;">
         <h1>แผนที่ประชากร ตำบลเปร็ง</h1>
-        <p>Preng Population Map · Version 6.0 · Supabase database</p>
+        <p>Preng Population Map · Version 6.2 · Supabase database</p>
       </div>
     </div>
 
@@ -1291,14 +1305,14 @@
     <button id="aerialLayerBtn" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v6.1 · Supabase</div>
+  <div class="version-tag">v6.2 · report</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
     <div class="panel-head" id="panelHead">
       <div class="panel-title-block">
         <strong>ข้อมูลบ้านในพื้นที่</strong>
-        <small id="panelSubtitle">Viewer: เห็นเฉพาะข้อมูลย่อ · ข้อมูลยังอยู่เฉพาะเครื่องนี้</small>
+        <small id="panelSubtitle">Viewer: เห็นเฉพาะข้อมูลย่อจากฐานข้อมูลกลาง</small>
       </div>
       <div class="panel-head-actions">
         <span id="storagePill" class="pill warning">setup</span>
@@ -1321,6 +1335,9 @@
           <option value="bedridden">ผู้ป่วยติดเตียง</option>
           <option value="chronic">กลุ่มเสี่ยง</option>
         </select>
+      </div>
+      <div id="reportActions" class="report-actions" hidden>
+        <button id="printReportBtn" class="btn btn-secondary" type="button">พิมพ์รายงานรายชื่อ</button>
       </div>
       <p id="modeNote" class="note">Viewer Mode: ดูแผนที่และข้อมูลแบบย่อเท่านั้น · หากต้องการเพิ่ม/แก้ไข/ลบ ให้เข้าสู่ระบบ Admin</p>
       </div>
@@ -1428,18 +1445,16 @@
       <header>
         <div>
           <h2>Admin Login</h2>
-          <p>กรอกชื่อผู้ใช้ เช่น Rarai หรือ Chanon ระบบจะแปลงเป็น email ของ Supabase ให้อัตโนมัติ</p>
         </div>
         <button class="close-btn" onclick="closeAdminModal()">×</button>
       </header>
       <div class="modal-body">
-        <label>User / Email
-          <input id="adminEmail" type="text" inputmode="text" placeholder="Rarai หรือ rarai@preng.local" autocomplete="username" autocapitalize="none" spellcheck="false" />
+        <label>User
+          <input id="adminEmail" type="text" inputmode="text" placeholder="User" autocomplete="username" autocapitalize="none" spellcheck="false" />
         </label>
         <label>Password
-          <input id="adminPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
+          <input id="adminPassword" type="password" placeholder="Password" autocomplete="current-password" />
         </label>
-        <p class="note">ใช้ชื่อผู้ใช้ที่สร้างไว้ เช่น Rarai / Chanon หรือกรอก email เต็มได้ · อย่าใช้ service_role key ในไฟล์นี้</p>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="closeAdminModal()">ยกเลิก</button>
           <button class="btn btn-primary" onclick="loginAdmin()">เข้าสู่ Admin</button>
@@ -1449,7 +1464,7 @@
   </div>
 
   <script>
-    const VERSION = 'v6.0';
+    const VERSION = 'v6.2';
     // 1) Paste values from Supabase > Project Settings > API here.
     // 2) Use anon/public key only. NEVER paste service_role key in frontend code.
     const SUPABASE_URL = 'https://iclmbqwktbqdirnskkzx.supabase.co';
@@ -1843,6 +1858,7 @@
         togglePanelSheet();
       });
       document.getElementById('addResidentBtn').addEventListener('click', () => addResidentRow({}));
+      document.getElementById('printReportBtn').addEventListener('click', printResidentReport);
       document.getElementById('phone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9+\-\s]/g, '').slice(0, 18); });
       initResponsiveLayout();
       initCenterPinAdd();
@@ -2290,6 +2306,135 @@
       return String(value || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     }
 
+
+    function compareHouseNo(a, b) {
+      const collator = new Intl.Collator('th-TH', { numeric: true, sensitivity: 'base' });
+      return collator.compare(String(a || ''), String(b || ''));
+    }
+
+    function currentThaiDateTime() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear() + 543} ${pad(d.getHours())}:${pad(d.getMinutes())} น.`;
+    }
+
+    function buildReportRows() {
+      const activeVillage = document.getElementById('villageFilter').value;
+      const activeStatus = document.getElementById('statusFilter').value;
+      const reportHouses = houses
+        .filter(h => activeVillage === 'all' || h.village === activeVillage)
+        .filter(h => activeStatus === 'all' || h.status === activeStatus)
+        .slice()
+        .sort((a, b) => {
+          const villageCompare = (Number(a.village || 0) || 0) - (Number(b.village || 0) || 0);
+          if (villageCompare !== 0) return villageCompare;
+          return compareHouseNo(a.houseNo, b.houseNo);
+        });
+
+      const groups = new Map();
+      reportHouses.forEach(h => {
+        const people = normalizePeople(h).filter(p => p.fullName || p.birthDate || p.citizenId);
+        if (!people.length) return;
+        const village = h.village || '-';
+        if (!groups.has(village)) groups.set(village, []);
+        people.forEach(p => groups.get(village).push({ house: h, person: p }));
+      });
+      return [...groups.entries()].sort((a, b) => (Number(a[0] || 0) || 0) - (Number(b[0] || 0) || 0));
+    }
+
+    function printResidentReport() {
+      if (!isAdmin) {
+        showToast('เฉพาะ Admin เท่านั้นที่พิมพ์รายงานได้');
+        return;
+      }
+      const groups = buildReportRows();
+      const filterVillage = document.getElementById('villageFilter').value;
+      const filterStatus = document.getElementById('statusFilter').value;
+      const filterText = [
+        filterVillage === 'all' ? 'ทุกหมู่' : `หมู่ ${filterVillage}`,
+        filterStatus === 'all' ? 'ทุกสถานะ' : (STATUS_LABEL[filterStatus] || filterStatus)
+      ].join(' · ');
+
+      const sections = groups.length ? groups.map(([village, rows]) => {
+        const villageName = VILLAGES.find(v => v.moo === village)?.name || '';
+        return `
+          <section class="report-section">
+            <h2>หมู่ที่ ${escapeHtml(village)} ${escapeHtml(villageName)}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50px;">ลำดับ</th>
+                  <th>ชื่อ-สกุล</th>
+                  <th style="width:120px;">วันเกิด</th>
+                  <th style="width:160px;">หมายเลขประชาชน</th>
+                  <th style="width:110px;">บ้านเลขที่</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((row, idx) => `
+                  <tr>
+                    <td class="center">${idx + 1}</td>
+                    <td>${escapeHtml(row.person.fullName || '')}</td>
+                    <td class="center">${escapeHtml(formatBirthDate(row.person.birthDate || ''))}</td>
+                    <td class="center">${escapeHtml(formatCitizenId(row.person.citizenId || ''))}</td>
+                    <td class="center">${escapeHtml(row.house.houseNo || '')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </section>`;
+      }).join('') : '<p class="empty">ไม่พบข้อมูลรายชื่อตามเงื่อนไขที่เลือก</p>';
+
+      const html = `<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>รายงานรายชื่อประชากร ตำบลเปร็ง</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Tahoma, sans-serif; color: #0f172a; margin: 24px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .meta { color: #475569; font-size: 12px; margin-bottom: 18px; }
+    .report-section { margin: 18px 0 26px; break-inside: avoid; }
+    h2 { font-size: 16px; margin: 0 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #334155; padding: 6px 8px; vertical-align: top; }
+    th { background: #f1f5f9; text-align: center; font-weight: 700; }
+    .center { text-align: center; }
+    .empty { color: #64748b; }
+    .print-actions { margin-bottom: 16px; display: flex; gap: 8px; }
+    button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .primary { background: #0f766e; color: white; }
+    .secondary { background: #e2e8f0; color: #0f172a; }
+    @media print {
+      body { margin: 12mm; }
+      .print-actions { display: none; }
+      .report-section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button class="primary" onclick="window.print()">Print</button>
+    <button class="secondary" onclick="window.close()">Close</button>
+  </div>
+  <h1>รายงานรายชื่อประชากร ตำบลเปร็ง</h1>
+  <div class="meta">Preng Population Map · ${escapeHtml(filterText)} · พิมพ์เมื่อ ${currentThaiDateTime()}</div>
+  ${sections}
+</body>
+</html>`;
+      const win = window.open('', '_blank');
+      if (!win) {
+        showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต popup สำหรับเว็บนี้');
+        return;
+      }
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+    }
+
     function editHouse(id) {
       if (!isAdmin) { showToast('เฉพาะ Admin เท่านั้นที่แก้ไขข้อมูลได้'); return; }
       const h = houses.find(x => x.id === id);
@@ -2486,6 +2631,7 @@
       const logoutBtn = document.getElementById('logoutBtn');
       const adminBtn = document.getElementById('adminBtn');
       const addHouseBtn = document.getElementById('addHouseBtn');
+      const reportActions = document.getElementById('reportActions');
 
       if (isAdmin) {
         modePill.textContent = 'Admin';
@@ -2501,6 +2647,7 @@
         adminBtn.textContent = '🔓';
         adminBtn.title = 'Logout Admin';
         addHouseBtn.hidden = false;
+        if (reportActions) reportActions.hidden = false;
       } else {
         modePill.textContent = 'Viewer';
         modePill.className = 'pill';
@@ -2516,6 +2663,7 @@
         adminBtn.textContent = '🔒';
         adminBtn.title = 'Admin Login';
         addHouseBtn.hidden = true;
+        if (reportActions) reportActions.hidden = true;
       }
     }
 
