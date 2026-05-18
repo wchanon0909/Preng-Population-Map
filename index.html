@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#0f766e" />
-  <title>Preng Population Map V5.6</title>
+  <title>Preng Population Map V5.7</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -469,6 +469,130 @@
     .modal h2 { font-size: 18px; margin: 0; }
     .modal header p { color: var(--muted); margin: 4px 0 0; font-size: 12px; }
     .modal-body { padding: 12px 14px 14px; display: grid; gap: 9px; }
+
+
+    .info-modal {
+      width: 560px;
+    }
+
+    .info-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .info-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+
+    .info-title-line strong {
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .info-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .info-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 9px 10px;
+      background: #fff;
+      min-width: 0;
+    }
+
+    .info-item span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .info-item b {
+      display: block;
+      font-size: 14px;
+      word-break: break-word;
+    }
+
+    .info-item.full { grid-column: 1 / -1; }
+
+    .info-people {
+      display: grid;
+      gap: 6px;
+    }
+
+    .info-person {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      background: #f8fafc;
+    }
+
+    .info-person .num {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 900;
+      font-size: 11px;
+    }
+
+    .info-person small {
+      display: block;
+      color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    .info-note {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 900;
+      background: #e0f2fe;
+      color: #075985;
+      white-space: nowrap;
+    }
+
+    .status-chip.general { background: #dcfce7; color: #166534; }
+    .status-chip.elderly { background: #fef9c3; color: #854d0e; }
+    .status-chip.bedridden { background: #fee2e2; color: #991b1b; }
+    .status-chip.chronic { background: #ede9fe; color: #5b21b6; }
 
     .form-grid {
       display: grid;
@@ -1166,7 +1290,7 @@
     <button id="aerialLayerBtn" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v5.6 · people form</div>
+  <div class="version-tag">v5.7 · center detail</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
@@ -1241,6 +1365,19 @@
     </div>
   </div>
 
+  <div id="infoModal" class="modal-backdrop">
+    <div class="modal info-modal">
+      <header>
+        <div>
+          <h2 id="infoModalTitle">ข้อมูลบ้าน</h2>
+          <p id="infoModalSubtitle">รายละเอียดจุดที่เลือก</p>
+        </div>
+        <button class="close-btn" onclick="closeInfoModal()">×</button>
+      </header>
+      <div id="infoModalBody" class="modal-body info-body"></div>
+    </div>
+  </div>
+
   <div id="houseModal" class="modal-backdrop">
     <div class="modal">
       <header>
@@ -1308,7 +1445,7 @@
   </div>
 
   <script>
-    const VERSION = 'v5.6';
+    const VERSION = 'v5.7';
     const ADMIN_PIN = '123456'; // Prototype only: เปลี่ยน PIN 6 หลักตรงนี้ก่อนส่งให้ผู้ทดลอง
     const STORAGE_KEY = 'preng-health-map-v4-houses'; // keep old local data when upgrading from v4.x to v5
     const BOUNDARY_STORAGE_KEY = 'preng-health-map-custom-boundary-v1';
@@ -1387,7 +1524,7 @@
 
     let prengBoundaryFeature = null;
     let prengBounds = L.latLngBounds(INITIAL_BOUNDS);
-    let houses = loadHouses();
+    let houses = loadHouses().map(h => ({ ...h, updatedAt: h.updatedAt || h.createdAt || null }));
     let isAdmin = sessionStorage.getItem('preng-health-admin-session') === 'true';
     let activeBaseLayer = 'normal';
     let currentPoint = null;
@@ -1738,9 +1875,9 @@
           iconAnchor: [15, 27],
           popupAnchor: [0, -24]
         });
-        L.marker([h.lat, h.lng], { icon })
-          .bindPopup(buildPopup(h))
-          .addTo(houseGroup);
+        const marker = L.marker([h.lat, h.lng], { icon });
+        marker.on('click', () => openHouseInfo(h.id));
+        marker.addTo(houseGroup);
       });
 
       updateSummary(filtered);
@@ -1780,6 +1917,100 @@
             <button onclick="editHouse('${h.id}')" style="background:#ccfbf1;color:#115e59;">แก้ไข</button>
             <button onclick="zoomToHouse('${h.id}')" style="background:#e0f2fe;color:#075985;">ซูม</button>
           </div>
+        </div>`;
+    }
+
+
+    function formatUpdatedAt(value) {
+      if (!value) return 'ยังไม่มีข้อมูลการบันทึก';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return 'ยังไม่มีข้อมูลการบันทึก';
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear() + 543} ${pad(d.getHours())}:${pad(d.getMinutes())} น.`;
+    }
+
+    function formatLatLng(h) {
+      if (!h || typeof h.lat !== 'number' || typeof h.lng !== 'number') return '-';
+      return `${h.lat.toFixed(6)}, ${h.lng.toFixed(6)}`;
+    }
+
+    function statusChip(status) {
+      const key = status || 'general';
+      return `<span class="status-chip ${key}">${STATUS_LABEL[key] || '-'}</span>`;
+    }
+
+    function openHouseInfo(id) {
+      if (isSelectingPoint) return;
+      const h = houses.find(x => x.id === id);
+      if (!h) return;
+      const villageName = VILLAGES.find(v => v.moo === h.village)?.name || '';
+      const title = isAdmin ? `บ้านเลขที่ ${escapeHtml(h.houseNo || '-')}` : `พื้นที่หมู่ ${escapeHtml(h.village || '-')}`;
+      document.getElementById('infoModalTitle').textContent = isAdmin ? 'ข้อมูลบ้าน' : 'ข้อมูลพื้นที่';
+      document.getElementById('infoModalSubtitle').textContent = `อัปเดตเมื่อ: ${formatUpdatedAt(h.updatedAt)}`;
+      document.getElementById('infoModalBody').innerHTML = isAdmin ? buildAdminInfoContent(h, villageName, title) : buildViewerInfoContent(h, villageName, title);
+      document.getElementById('infoModal').classList.add('show');
+    }
+
+    function closeInfoModal() {
+      document.getElementById('infoModal').classList.remove('show');
+    }
+
+    function buildViewerInfoContent(h, villageName, title) {
+      return `
+        <div class="info-title-line">
+          <div>
+            <strong>${title}</strong>
+            <div class="info-sub">${escapeHtml(villageName)} · ข้อมูลแบบย่อสำหรับ Viewer</div>
+          </div>
+          ${statusChip(h.status)}
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><span>หมู่</span><b>${escapeHtml(h.village || '-')}</b></div>
+          <div class="info-item"><span>ผู้อยู่อาศัย</span><b>${personCount(h)}</b></div>
+          <div class="info-item full"><span>ตำแหน่ง</span><b>${formatLatLng(h)}</b></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" type="button" onclick="closeInfoModal()">ปิด</button>
+          <button class="btn btn-primary" type="button" onclick="zoomToHouse('${h.id}'); closeInfoModal();">ซูมไปที่หมุด</button>
+        </div>`;
+    }
+
+    function buildAdminInfoContent(h, villageName, title) {
+      const people = normalizePeople(h).filter(p => p.fullName || p.birthDate || p.citizenId || p.status);
+      const peopleHtml = people.length ? `
+        <div class="form-section-title">รายชื่อผู้อยู่อาศัย</div>
+        <div class="info-people">
+          ${people.map((p, idx) => `
+            <div class="info-person">
+              <div class="num">${idx + 1}</div>
+              <div>
+                <b>${escapeHtml(p.fullName || '-')}</b>
+                <small>วันเกิด: ${escapeHtml(p.birthDate || '-')} · เลขบัตร: ${escapeHtml(p.citizenId || '-')}</small>
+              </div>
+              ${statusChip(p.status || 'general')}
+            </div>`).join('')}
+        </div>` : '';
+      return `
+        <div class="info-title-line">
+          <div>
+            <strong>${title}</strong>
+            <div class="info-sub">ม.${escapeHtml(h.village || '-')} ${escapeHtml(villageName)}</div>
+          </div>
+          ${statusChip(h.status)}
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><span>เจ้าของบ้าน</span><b>${escapeHtml(h.ownerName || '-')}</b></div>
+          <div class="info-item"><span>ผู้ติดต่อ</span><b>${escapeHtml(h.contactName || '-')}</b></div>
+          <div class="info-item"><span>เบอร์โทร</span><b>${escapeHtml(h.phone || '-')}</b></div>
+          <div class="info-item"><span>ผู้อยู่อาศัย</span><b>${personCount(h)}</b></div>
+          <div class="info-item full"><span>ตำแหน่ง</span><b>${formatLatLng(h)}</b></div>
+        </div>
+        ${peopleHtml}
+        ${h.note ? `<div class="form-section-title">หมายเหตุ</div><div class="info-note">${escapeHtml(h.note)}</div>` : ''}
+        <div class="btn-row">
+          <button class="btn btn-secondary" type="button" onclick="closeInfoModal()">ปิด</button>
+          <button class="btn btn-secondary" type="button" onclick="zoomToHouse('${h.id}'); closeInfoModal();">ซูมไปที่หมุด</button>
+          <button class="btn btn-primary" type="button" onclick="closeInfoModal(); editHouse('${h.id}')">แก้ไข</button>
         </div>`;
     }
 
@@ -1920,7 +2151,7 @@
       editingHouseId = id;
       currentPoint = { lat: h.lat, lng: h.lng };
       document.getElementById('modalTitle').textContent = 'แก้ไขข้อมูลบ้าน';
-      document.getElementById('modalSubtitle').textContent = `ตำแหน่ง: ${h.lat.toFixed(6)}, ${h.lng.toFixed(6)}`;
+      document.getElementById('modalSubtitle').textContent = `อัปเดตเมื่อ: ${formatUpdatedAt(h.updatedAt)}`;
       document.getElementById('coordDisplay').textContent = `ตำแหน่ง: ${h.lat.toFixed(6)}, ${h.lng.toFixed(6)}`;
       document.getElementById('houseNo').value = h.houseNo || '';
       document.getElementById('houseVillage').value = h.village || '1';
@@ -1946,7 +2177,7 @@
       editingHouseId = null;
       currentPoint = latlng;
       document.getElementById('modalTitle').textContent = 'เพิ่มข้อมูลบ้าน';
-      document.getElementById('modalSubtitle').textContent = `ตำแหน่ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+      document.getElementById('modalSubtitle').textContent = 'อัปเดตเมื่อ: จะบันทึกเมื่อกดปุ่มบันทึก';
       document.getElementById('coordDisplay').textContent = `ตำแหน่ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
       document.getElementById('houseNo').value = '';
       document.getElementById('houseVillage').value = nearestVillage(latlng)?.moo || '1';
@@ -1984,7 +2215,8 @@
         note: document.getElementById('note').value.trim(),
         lat: currentPoint.lat,
         lng: currentPoint.lng,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        createdAt: editingHouseId ? (houses.find(h => h.id === editingHouseId)?.createdAt || new Date().toISOString()) : new Date().toISOString()
       };
 
       if (editingHouseId) {
@@ -1996,6 +2228,7 @@
       renderHouses();
       selectedPointGroup.clearLayers();
       closeModal();
+      closeInfoModal();
       showToast('บันทึกข้อมูลบ้านแล้ว');
     }
 
@@ -2008,6 +2241,7 @@
       renderHouses();
       selectedPointGroup.clearLayers();
       closeModal();
+      closeInfoModal();
       showToast('ลบข้อมูลแล้ว');
     }
 
@@ -2128,9 +2362,6 @@
       const container = map.getContainer();
       container.addEventListener('contextmenu', e => e.preventDefault());
       map.on('click', handleMapClickForAdd);
-      map.on('popupopen', () => {
-        if (isSelectingPoint) map.closePopup();
-      });
     }
 
     function handleMapClickForAdd(e) {
@@ -2169,7 +2400,7 @@
       const centerMode = useCenterPinMode();
       isSelectingPoint = true;
       selectedPointGroup.clearLayers();
-      map.closePopup();
+      closeInfoModal();
       document.body.classList.add('selecting-point');
       document.body.classList.toggle('desktop-point-select', !centerMode);
       document.body.classList.toggle('center-pin-select', centerMode);
