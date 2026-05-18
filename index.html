@@ -1291,7 +1291,7 @@
     <button id="aerialLayerBtn" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v6.0 · Supabase</div>
+  <div class="version-tag">v6.1 · Supabase</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
@@ -1428,18 +1428,18 @@
       <header>
         <div>
           <h2>Admin Login</h2>
-          <p>เข้าสู่ระบบด้วยบัญชี Admin ที่สร้างใน Supabase เพื่อเพิ่ม/แก้ไข/ลบข้อมูล</p>
+          <p>กรอกชื่อผู้ใช้ เช่น Rarai หรือ Chanon ระบบจะแปลงเป็น email ของ Supabase ให้อัตโนมัติ</p>
         </div>
         <button class="close-btn" onclick="closeAdminModal()">×</button>
       </header>
       <div class="modal-body">
-        <label>Email
-          <input id="adminEmail" type="email" inputmode="email" placeholder="admin@example.com" autocomplete="username" />
+        <label>User / Email
+          <input id="adminEmail" type="text" inputmode="text" placeholder="Rarai หรือ rarai@preng.local" autocomplete="username" autocapitalize="none" spellcheck="false" />
         </label>
         <label>Password
           <input id="adminPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
         </label>
-        <p class="note">ใช้บัญชีที่สร้างไว้ใน Supabase Authentication เท่านั้น · อย่าใช้ service_role key ในไฟล์นี้</p>
+        <p class="note">ใช้ชื่อผู้ใช้ที่สร้างไว้ เช่น Rarai / Chanon หรือกรอก email เต็มได้ · อย่าใช้ service_role key ในไฟล์นี้</p>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="closeAdminModal()">ยกเลิก</button>
           <button class="btn btn-primary" onclick="loginAdmin()">เข้าสู่ Admin</button>
@@ -2427,15 +2427,23 @@
       document.getElementById('adminModal').classList.remove('show');
     }
 
+    function normalizeLoginIdentifier(rawUser) {
+      const value = String(rawUser || '').trim();
+      if (!value) return '';
+      if (value.includes('@')) return value.toLowerCase();
+      return value.toLowerCase().replace(/\s+/g, '') + '@preng.local';
+    }
+
     async function loginAdmin() {
       if (!isSupabaseConfigured()) {
         showToast('ยังไม่ได้ตั้งค่า Supabase');
         return;
       }
-      const email = document.getElementById('adminEmail').value.trim();
+      const rawUser = document.getElementById('adminEmail').value.trim();
+      const email = normalizeLoginIdentifier(rawUser);
       const password = document.getElementById('adminPassword').value;
       if (!email || !password) {
-        showToast('กรุณากรอก Email และ Password');
+        showToast('กรุณากรอก User และ Password');
         return;
       }
       try {
@@ -2449,7 +2457,7 @@
         showToast(useCenterPinMode() ? 'เข้าสู่ Admin แล้ว · กด + เพิ่มบ้าน เพื่อเลือกตำแหน่งด้วยหมุดกลางจอ' : 'เข้าสู่ Admin แล้ว · กด + เพิ่มบ้าน แล้วคลิกตำแหน่งบนแผนที่');
       } catch (error) {
         console.error(error);
-        showToast('เข้าสู่ระบบไม่สำเร็จ: ตรวจ email/password หรือสถานะผู้ใช้ใน Supabase');
+        showToast('เข้าสู่ระบบไม่สำเร็จ: ตรวจ User/Password หรือสถานะผู้ใช้ใน Supabase');
       }
     }
 
