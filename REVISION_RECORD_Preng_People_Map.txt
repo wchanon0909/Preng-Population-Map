@@ -1,0 +1,210 @@
+Preng People Map - Revision Record
+Project: แผนที่ประชากร ตำบลเปร็ง (Preng Population Map)
+Purpose: Revision tracking file for GitHub repository
+Last updated: 2026-05-30
+
+============================================================
+VERSION HISTORY
+============================================================
+
+v1.0 - Initial Tambon Health Map Mockup
+- Created first interactive map mockup for household/public health data.
+- Added map markers, household form, status colors, search/filter concept.
+- Data stored locally in browser using localStorage.
+
+v2.0 - Preng Area Focus Map
+- Changed project area to Tambon Preng, Bang Bo District, Samut Prakan.
+- Added grey mask outside the working area.
+- Limited map movement to focus on Tambon Preng.
+
+v3.0 - Map Layer Toggle
+- Added base map switching between normal map and aerial imagery.
+- Kept household markers and Tambon boundary overlay.
+
+v4.0 - Real Boundary Concept
+- Added real Tambon Preng boundary source concept.
+- Added grey mask outside Tambon Preng.
+- Added draft Moo 1-9 working boundaries and labels.
+- Adjusted zoom level and mobile map usability.
+
+v4.1 - Boundary Clean-up
+- Removed unofficial Moo 1-9 dashed boundaries.
+- Removed unofficial Moo labels.
+- Kept Tambon Preng boundary and grey outside mask only.
+- Confirmed zoom level was suitable for field use.
+
+v5.0 - Viewer/Admin Prototype
+- Added Viewer Mode as default mode.
+- Added temporary Admin Login using PIN.
+- Viewer can view summary only.
+- Admin can add, edit, and delete household points.
+- Improved map/aerial toggle UI.
+
+v5.1 - Mobile UX Fix
+- Reduced mobile header size.
+- Added collapsible bottom sheet.
+- Improved mobile layout to show more map area.
+- Adjusted zoom and map bounds for better iPhone/iPad use.
+- Hid unnecessary zoom controls on mobile.
+
+v5.2 - Add Point UX Update
+- Changed add-point workflow.
+- Admin selects location first, then fills household data.
+- Removed Import/Export JSON menu as not necessary for field use.
+
+v5.3 - Center Pin Mode
+- Removed long-press add point method for iPhone/iPad.
+- Added center pin workflow for mobile users.
+- Admin moves map under center pin and confirms location.
+
+v5.4 - Desktop/Mobile Add Point Split
+- Desktop: Admin clicks map directly to place a point.
+- Mobile/iPad: Admin uses center pin mode.
+- Viewer cannot add/edit/delete points.
+
+v5.5 - Point Selection and Form Preparation
+- Improved mobile center pin symbol.
+- Fixed desktop click-to-place issue.
+- Prepared concept for boundary update by hard-coded replacement in future.
+- Updated household form structure based on field data entry sketch.
+- Removed boundary management menu from UI.
+
+v5.6 - Household Form and Project Identity Update
+- Renamed project to "แผนที่ประชากร ตำบลเปร็ง".
+- English name: "Preng Population Map".
+- Updated logo wording to "Preng People".
+- Split owner/contact fields and added phone number.
+- Added dynamic resident rows.
+- Added Buddhist year date format dd/mm/yyyy.
+- Added citizen ID formatting x-xxxx-xxxxx-xx-x.
+- Collapsed search/filter panel by default on PC and mobile.
+
+v5.7 - Center Information Modal
+- Changed marker information display from marker popup to centered modal.
+- Added updated date/time record when saving data.
+- Prevented duplicated coordinate display.
+- Prepared plan for Supabase database migration.
+
+v6.0 - Supabase Database Starter
+- Created Supabase-ready version.
+- Added houses table concept.
+- Added house_public view for Viewer data.
+- Connected frontend to Supabase URL and publishable key.
+- Viewer reads limited public data.
+- Admin reads and manages full data after login.
+
+v6.1 - Login Alias
+- Added login alias conversion.
+- Users can login with short username such as Rarai or Chanon.
+- System converts username to email format, e.g. rarai@preng.local.
+
+v6.2 - Login UI and Print Report
+- Simplified Admin Login UI.
+- Added Print Report for Admin.
+- Report includes resident list grouped by village and sorted by house number.
+- Report initially included: sequence, full name, birth date, citizen ID, house number.
+
+v6.2.1 - Delete Permission Fix
+- Fixed delete/soft-delete issue for authenticated users.
+- Added/used soft delete workflow instead of permanent deletion.
+- Ensured admin users can hide/delete map points under RLS.
+
+v6.3 - User Profiles and Admin Role Labels
+- Added profiles table concept.
+- Added display name and role label after login.
+- Added two initial admin users:
+  - Chanon: Backend Admin / Admin สูงสุด
+  - Rarai: Frontend Admin / Admin ระดับรอง
+- Both users have equal frontend data management rights.
+
+v6.4 - Status, Report, and UI Clean-up
+- Added new status: ผู้พิการ.
+- Status list became:
+  - ปกติ
+  - ผู้สูงอายุ
+  - ผู้พิการ
+  - ผู้ป่วยติดเตียง
+  - กลุ่มเสี่ยง
+- Updated Print Report columns:
+  - ลำดับ
+  - ชื่อ-สกุล
+  - สถานะ
+  - วันเกิด
+  - อายุ
+  - หมายเลขประชาชน
+  - บ้านเลขที่
+- Added phone number auto-format XXX-XXX-XXXX.
+- Set aerial imagery as default map mode.
+- Cleaned up UI and reduced unnecessary screen-blocking panels.
+- Added 4 admin users with equal data management permissions:
+  - rarai
+  - preecha
+  - patchara
+  - chanon
+
+v6.4.1 - Layout Fix
+- Removed Leaflet zoom + / - controls.
+- Repositioned bottom-right action buttons.
+- Reduced clutter around map controls on mobile/iPad.
+
+v6.4.2 - Touch / PWA Fix
+- Fixed iPhone/iPad pinch zoom problem where the whole interface zoomed instead of the map.
+- Improved touch behavior for PWA/Home Screen use.
+- Kept map pinch zoom while reducing browser page zoom.
+- No SQL/database change required.
+
+v6.4.3 - A4 Print Report Fix
+- Updated Print Report layout to A4 portrait.
+- Fixed report table proportions for A4 page.
+- Added only Print / Save PDF button.
+- Removed Save Image idea.
+- Added small version display.
+- Reordered bottom-right action buttons:
+  1. Add house
+  2. My location
+  3. Reset zoom
+  4. Legend
+
+v6.4.4 - Session Timeout and Title Fix
+- Added Admin auto logout after 15 minutes of inactivity.
+- Viewer mode remains available without timeout.
+- Added warning before auto logout.
+- Added small version label below project title.
+- Fixed browser tab title to match current version.
+
+============================================================
+CURRENT RECOMMENDED PRODUCTION VERSION
+============================================================
+
+Current recommended version:
+v6.4.4 - Session Timeout and Title Fix
+
+Required SQL:
+- Run v6.4 SQL Patch only once, or rerun safely after creating new Auth users.
+- v6.4.1 to v6.4.4 are HTML/UI-only updates and do not require additional SQL changes.
+
+Current admin users:
+- rarai / rarai@preng.local
+- preecha / preecha@preng.local
+- patchara / patchara@preng.local
+- chanon / chanon@preng.local
+
+Notes:
+- All four admin users have equal rights in the web application.
+- Chanon is mainly responsible for backend/database management.
+- Rarai is mainly responsible for frontend/data entry management.
+- Existing household and population data must be preserved during all updates.
+- SQL patches should avoid dropping tables or deleting existing rows.
+- Soft delete is preferred over permanent delete.
+
+============================================================
+FUTURE BACKLOG
+============================================================
+
+Potential future improvements:
+- Realtime sync between active devices.
+- Export CSV/Excel for Admin.
+- Dashboard summary by village and status.
+- Visit history per household.
+- Official updated Tambon boundary hard-coded into the app if a more accurate file is provided.
+- Native iOS wrapper app only if PWA/Home Screen workflow becomes insufficient.
