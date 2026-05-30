@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#0f766e" />
-  <title>Preng Population Map V6.0</title>
+  <title>Preng Population Map V6.4</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -965,6 +965,9 @@
       overflow: hidden;
     }
 
+    /* v6.4.1: remove Leaflet +/- zoom buttons to keep bottom-right tools clean on phone/iPad. */
+    .leaflet-control-zoom { display: none !important; }
+
 
     .mode-actions {
       display: flex;
@@ -1049,6 +1052,10 @@
       text-align: center;
       font-size: 20px;
       font-weight: 900;
+    }
+
+    @media (max-width: 1024px), (pointer: coarse) {
+      .leaflet-control-attribution { display: none !important; }
     }
 
     @media (max-width: 760px) {
@@ -1274,6 +1281,176 @@
       .resident-row .resident-remove { grid-column: 3; grid-row: 1; justify-self: end; }
     }
 
+
+
+    /* v6.4 UI cleanup */
+    .topbar {
+      left: 10px;
+      right: 10px;
+      top: calc(8px + env(safe-area-inset-top));
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+    }
+
+    .brand {
+      padding: 7px 10px;
+      border-radius: 15px;
+      max-width: min(520px, calc(100vw - 120px));
+    }
+
+    .brand-logo {
+      width: 82px;
+      height: 32px;
+      border-radius: 12px;
+    }
+
+    .brand-logo span { font-size: 8px; margin-top: 1px; }
+    .brand-logo b { font-size: 11px; }
+    .brand h1 { font-size: 15px; }
+    .brand p { display: none; }
+
+    .mode-card {
+      min-width: auto;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .mode-card .mode-row:first-child { display: none; }
+    .mode-card .mode-row { display: flex; }
+    #modeHint, #modePill { display: none !important; }
+    .mode-actions { display: flex; }
+    .mode-actions .mini-btn {
+      min-height: 38px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(226,232,240,0.9);
+    }
+    #loginBtn.primary, #logoutBtn.danger {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .map-switch {
+      right: 10px;
+      top: calc(56px + env(safe-area-inset-top));
+      border-radius: 15px;
+      padding: 4px;
+    }
+    .map-switch button {
+      min-width: 58px;
+      padding: 8px 9px;
+      font-size: 11px;
+      border-radius: 12px;
+    }
+
+    .version-tag, .map-status { display: none !important; }
+
+    .panel {
+      left: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      transition: width 0.18s ease, max-height 0.18s ease, border-radius 0.18s ease;
+    }
+    .panel.collapsed {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .panel.collapsed .panel-title-block,
+    .panel.collapsed .storagePill,
+    .panel.collapsed #storagePill { display: none !important; }
+    .panel.collapsed .panel-head {
+      min-height: 56px;
+      padding: 0;
+      justify-content: center;
+      border-bottom: 0;
+      background: rgba(255,255,255,0.94);
+    }
+    .panel.collapsed .panel-head-actions { gap: 0; }
+    .panel.collapsed .sheet-toggle {
+      width: 56px;
+      height: 56px;
+      border: 0;
+      border-radius: 18px;
+      font-size: 21px;
+      background: transparent;
+    }
+    .panel.expanded { width: 354px; }
+
+    .floating-actions {
+      right: 10px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      gap: 7px;
+      z-index: 900;
+    }
+    .floating-actions button {
+      width: 46px;
+      height: 46px;
+      min-width: 46px;
+      min-height: 46px;
+      padding: 0;
+      border-radius: 15px;
+      font-size: 18px;
+    }
+    .legend {
+      right: 64px;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      display: none;
+      min-width: 160px;
+    }
+    .legend.show { display: block; }
+    .dot.disabled { background: #0ea5e9; }
+    .house-marker.disabled { background: #0ea5e9; }
+    .status-chip.disabled { background: #e0f2fe; color: #075985; }
+
+    @media (max-width: 760px) {
+      .topbar {
+        left: 8px;
+        right: 8px;
+        top: calc(6px + env(safe-area-inset-top));
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px;
+      }
+      .brand {
+        padding: 6px 8px;
+        border-radius: 15px;
+        max-width: none;
+      }
+      .brand-logo { width: 64px; height: 30px; }
+      .brand h1 { font-size: 13px; }
+      .mode-card { padding: 0; min-width: auto; }
+      .mode-actions .mini-btn { min-height: 34px; padding: 7px 11px; font-size: 11px; }
+      .map-switch { top: calc(48px + env(safe-area-inset-top)); right: 8px; }
+      .map-switch button { min-width: 48px; padding: 7px 7px; font-size: 10px; }
+      .panel.expanded {
+        left: 8px;
+        right: auto;
+        width: min(354px, calc(100vw - 16px));
+        max-height: min(70vh, 560px);
+      }
+      .panel.collapsed {
+        left: 8px;
+        right: auto;
+        width: 54px;
+        height: 54px;
+      }
+      .panel.collapsed .sheet-toggle { width: 54px; height: 54px; }
+      .floating-actions { right: 8px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+      .floating-actions button { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+      .legend { right: 60px; bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .leaflet-control-attribution { display: none; }
+    }
+
   </style>
 </head>
 <body>
@@ -1284,7 +1461,7 @@
       <div class="brand-logo"><span>Preng</span><b>People</b></div>
       <div style="min-width:0;">
         <h1>แผนที่ประชากร ตำบลเปร็ง</h1>
-        <p>Preng Population Map · Version 6.3 · User profile / admin role</p>
+        <p>Preng Population Map</p>
       </div>
     </div>
 
@@ -1301,11 +1478,11 @@
   </div>
 
   <div class="map-switch" aria-label="สลับรูปแบบแผนที่">
-    <button id="normalLayerBtn" class="active" type="button">แผนที่</button>
-    <button id="aerialLayerBtn" type="button">ภาพถ่าย</button>
+    <button id="normalLayerBtn" type="button">แผนที่</button>
+    <button id="aerialLayerBtn" class="active" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v6.3 · user profiles</div>
+  <div class="version-tag">v6.4</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
@@ -1332,6 +1509,7 @@
           <option value="all">ทุกสถานะ</option>
           <option value="general">ปกติ</option>
           <option value="elderly">ผู้สูงอายุ</option>
+          <option value="disabled">ผู้พิการ</option>
           <option value="bedridden">ผู้ป่วยติดเตียง</option>
           <option value="chronic">กลุ่มเสี่ยง</option>
         </select>
@@ -1345,16 +1523,18 @@
   </section>
 
   <div class="floating-actions">
-    <button id="addHouseBtn" class="add-house-btn" title="เพิ่มบ้าน" hidden>＋</button>
+    <button id="legendBtn" title="สัญลักษณ์">☷</button>
+    <button id="resetBtn" title="ดูทั้งตำบล">⌂</button>
     <button id="locateBtn" title="ตำแหน่งฉัน">◎</button>
-    <button id="resetBtn" title="กลับตำบลเปร็ง">⌂</button>
-    <button id="adminBtn" title="Admin Login">🔒</button>
+    <button id="addHouseBtn" class="add-house-btn" title="เพิ่มบ้าน" hidden>＋</button>
+    <button id="adminBtn" title="Admin Login" hidden style="display:none;">🔒</button>
   </div>
 
   <div class="legend">
     <strong>สัญลักษณ์</strong>
     <div class="legend-row"><span class="dot general"></span>ปกติ</div>
     <div class="legend-row"><span class="dot elderly"></span>ผู้สูงอายุ</div>
+    <div class="legend-row"><span class="dot disabled"></span>ผู้พิการ</div>
     <div class="legend-row"><span class="dot bedridden"></span>ผู้ป่วยติดเตียง</div>
     <div class="legend-row"><span class="dot chronic"></span>กลุ่มเสี่ยง</div>
   </div>
@@ -1464,7 +1644,7 @@
   </div>
 
   <script>
-    const VERSION = 'v6.3';
+    const VERSION = 'v6.4.1';
     // 1) Paste values from Supabase > Project Settings > API here.
     // 2) Use anon/public key only. NEVER paste service_role key in frontend code.
     const SUPABASE_URL = 'https://iclmbqwktbqdirnskkzx.supabase.co';
@@ -1477,6 +1657,7 @@
     const STATUS_LABEL = {
       general: 'ปกติ',
       elderly: 'ผู้สูงอายุ',
+      disabled: 'ผู้พิการ',
       bedridden: 'ผู้ป่วยติดเตียง',
       chronic: 'กลุ่มเสี่ยง',
       empty: 'ไม่มีผู้อยู่อาศัย'
@@ -1528,7 +1709,7 @@
       zoom: 15,
       minZoom: 13,
       maxZoom: 21,
-      layers: [normalMap],
+      layers: [aerialMap],
       zoomControl: false,
       attributionControl: true,
       maxBounds: INITIAL_BOUNDS,
@@ -1536,7 +1717,7 @@
       preferCanvas: true
     });
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    // v6.4.1: custom UX uses pinch/scroll zoom only; Leaflet +/- control is intentionally disabled.
 
     const boundaryGroup = L.layerGroup().addTo(map);
     const villageGroup = L.layerGroup().addTo(map);
@@ -1554,7 +1735,7 @@
     let isAdmin = false;
     let currentUser = null;
     let currentProfile = null;
-    let activeBaseLayer = 'normal';
+    let activeBaseLayer = 'aerial';
     let currentPoint = null;
     let editingHouseId = null;
     let isSelectingPoint = false;
@@ -1601,6 +1782,8 @@
       if (panel.classList.contains('expanded')) {
         panel.classList.remove('expanded');
         panel.classList.add('collapsed');
+        const search = document.getElementById('searchInput');
+        if (search && search.value) { search.value = ''; renderHouses(); }
       } else {
         panel.classList.remove('collapsed');
         panel.classList.add('expanded');
@@ -1613,7 +1796,7 @@
       const panel = document.getElementById('dataPanel');
       const toggle = document.getElementById('sheetToggle');
       if (!panel || !toggle) return;
-      toggle.textContent = panel.classList.contains('expanded') ? '⌄' : '⌃';
+      toggle.textContent = panel.classList.contains('expanded') ? '×' : '🔎';
       toggle.setAttribute('aria-label', panel.classList.contains('expanded') ? 'พับแผงข้อมูล' : 'ขยายแผงข้อมูล');
     }
 
@@ -1846,6 +2029,7 @@
 
       document.getElementById('locateBtn').addEventListener('click', locateMe);
       document.getElementById('resetBtn').addEventListener('click', () => applyBoundaryViewport({ animate: true }));
+      document.getElementById('legendBtn').addEventListener('click', toggleLegend);
       document.getElementById('addHouseBtn').addEventListener('click', startAddPointMode);
       document.getElementById('adminBtn').addEventListener('click', () => isAdmin ? logoutAdmin() : openAdminModal());
       document.getElementById('loginBtn').addEventListener('click', openAdminModal);
@@ -1860,7 +2044,7 @@
       });
       document.getElementById('addResidentBtn').addEventListener('click', () => addResidentRow({}));
       document.getElementById('printReportBtn').addEventListener('click', printResidentReport);
-      document.getElementById('phone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9+\-\s]/g, '').slice(0, 18); });
+      document.getElementById('phone').addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
       initResponsiveLayout();
       initCenterPinAdd();
       window.addEventListener('resize', initResponsiveLayout);
@@ -1965,7 +2149,7 @@
         village: row.village || '',
         ownerName: publicOnly ? '' : (row.owner_name || ''),
         contactName: publicOnly ? '' : (row.contact_name || ''),
-        phone: publicOnly ? '' : (row.phone || ''),
+        phone: publicOnly ? '' : formatPhone(row.phone || ''),
         people,
         residents: publicOnly ? Number(row.residents || 0) : (people.length || Number(row.residents || 0)),
         status: row.status || 'general',
@@ -1985,7 +2169,7 @@
         status: payload.status || 'general',
         owner_name: payload.ownerName || null,
         contact_name: payload.contactName || null,
-        phone: payload.phone || null,
+        phone: formatPhone(payload.phone || '') || null,
         people: payload.people || [],
         note: payload.note || null,
         lat: payload.lat,
@@ -2228,7 +2412,7 @@
 
     function updateSummary(list) {
       const totalResidents = list.reduce((s, h) => s + personCount(h), 0);
-      const risk = list.filter(h => ['elderly', 'bedridden', 'chronic'].includes(h.status)).length;
+      const risk = list.filter(h => ['elderly', 'disabled', 'bedridden', 'chronic'].includes(h.status)).length;
       document.getElementById('sumHouses').textContent = list.length.toLocaleString('th-TH');
       document.getElementById('sumResidents').textContent = totalResidents.toLocaleString('th-TH');
       document.getElementById('sumRisk').textContent = risk.toLocaleString('th-TH');
@@ -2263,6 +2447,37 @@
       return parts.join('-');
     }
 
+    function formatPhone(value) {
+      const d = String(value || '').replace(/\D/g, '').slice(0, 10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+      return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    }
+
+    function parseThaiBirthDate(value) {
+      const raw = String(value || '').trim();
+      const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!m) return null;
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      let year = Number(m[3]);
+      if (!day || !month || !year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+      if (year > 2400) year -= 543;
+      const d = new Date(year, month - 1, day);
+      if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+      return d;
+    }
+
+    function calculateAgeFromBirthDate(value) {
+      const birth = parseThaiBirthDate(formatBirthDate(value));
+      if (!birth) return '-';
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      return age >= 0 && age < 130 ? String(age) : '-';
+    }
+
     function formatBirthDate(value) {
       const raw = String(value || '').trim();
       if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
@@ -2276,7 +2491,7 @@
     }
 
     function createStatusOptions(selected = 'general') {
-      return ['general', 'elderly', 'bedridden', 'chronic'].map(key =>
+      return ['general', 'elderly', 'disabled', 'bedridden', 'chronic'].map(key =>
         `<option value="${key}" ${selected === key ? 'selected' : ''}>${STATUS_LABEL[key]}</option>`
       ).join('');
     }
@@ -2337,7 +2552,7 @@
     }
 
     function deriveStatusFromPeople(people, fallback = 'general') {
-      const priority = { bedridden: 4, chronic: 3, elderly: 2, general: 1, empty: 0 };
+      const priority = { bedridden: 5, disabled: 4, chronic: 3, elderly: 2, general: 1, empty: 0 };
       const base = fallback || 'general';
       return (people || []).reduce((best, p) => (priority[p.status] || 1) > (priority[best] || 1) ? p.status : best, base);
     }
@@ -2373,7 +2588,6 @@
       const activeStatus = document.getElementById('statusFilter').value;
       const reportHouses = houses
         .filter(h => activeVillage === 'all' || h.village === activeVillage)
-        .filter(h => activeStatus === 'all' || h.status === activeStatus)
         .slice()
         .sort((a, b) => {
           const villageCompare = (Number(a.village || 0) || 0) - (Number(b.village || 0) || 0);
@@ -2384,10 +2598,11 @@
       const groups = new Map();
       reportHouses.forEach(h => {
         const people = normalizePeople(h).filter(p => p.fullName || p.birthDate || p.citizenId);
-        if (!people.length) return;
+        const filteredPeople = activeStatus === 'all' ? people : people.filter(p => (p.status || 'general') === activeStatus);
+        if (!filteredPeople.length) return;
         const village = h.village || '-';
         if (!groups.has(village)) groups.set(village, []);
-        people.forEach(p => groups.get(village).push({ house: h, person: p }));
+        filteredPeople.forEach(p => groups.get(village).push({ house: h, person: p }));
       });
       return [...groups.entries()].sort((a, b) => (Number(a[0] || 0) || 0) - (Number(b[0] || 0) || 0));
     }
@@ -2413,11 +2628,13 @@
             <table>
               <thead>
                 <tr>
-                  <th style="width:50px;">ลำดับ</th>
+                  <th style="width:42px;">ลำดับ</th>
                   <th>ชื่อ-สกุล</th>
-                  <th style="width:120px;">วันเกิด</th>
-                  <th style="width:160px;">หมายเลขประชาชน</th>
-                  <th style="width:110px;">บ้านเลขที่</th>
+                  <th style="width:95px;">สถานะ</th>
+                  <th style="width:95px;">วันเกิด</th>
+                  <th style="width:55px;">อายุ</th>
+                  <th style="width:145px;">หมายเลขประชาชน</th>
+                  <th style="width:90px;">บ้านเลขที่</th>
                 </tr>
               </thead>
               <tbody>
@@ -2425,7 +2642,9 @@
                   <tr>
                     <td class="center">${idx + 1}</td>
                     <td>${escapeHtml(row.person.fullName || '')}</td>
+                    <td class="center">${escapeHtml(STATUS_LABEL[row.person.status || 'general'] || '-')}</td>
                     <td class="center">${escapeHtml(formatBirthDate(row.person.birthDate || ''))}</td>
+                    <td class="center">${escapeHtml(calculateAgeFromBirthDate(row.person.birthDate || ''))}</td>
                     <td class="center">${escapeHtml(formatCitizenId(row.person.citizenId || ''))}</td>
                     <td class="center">${escapeHtml(row.house.houseNo || '')}</td>
                   </tr>
@@ -2498,7 +2717,7 @@
       document.getElementById('houseVillage').value = h.village || '1';
       document.getElementById('ownerName').value = h.ownerName || '';
       document.getElementById('contactName').value = h.contactName || h.ownerName || '';
-      document.getElementById('phone').value = h.phone || '';
+      document.getElementById('phone').value = formatPhone(h.phone || '');
       document.getElementById('houseStatus').value = h.status || 'general';
       setPeopleForm(normalizePeople(h));
       document.getElementById('note').value = h.note || '';
@@ -2550,7 +2769,7 @@
         village: document.getElementById('houseVillage').value,
         ownerName: document.getElementById('ownerName').value.trim(),
         contactName: document.getElementById('contactName').value.trim(),
-        phone: document.getElementById('phone').value.trim(),
+        phone: formatPhone(document.getElementById('phone').value),
         people,
         residents: people.length,
         status: selectedStatus,
@@ -2707,9 +2926,8 @@
         addHint.classList.add('show');
         loginBtn.hidden = true;
         logoutBtn.hidden = false;
-        logoutBtn.textContent = 'Logout';
-        adminBtn.textContent = '👤';
-        adminBtn.title = `${adminName} · Logout`;
+        logoutBtn.textContent = adminName;
+        if (adminBtn) { adminBtn.textContent = '👤'; adminBtn.title = `${adminName} · Logout`; }
         addHouseBtn.hidden = false;
         if (reportActions) reportActions.hidden = false;
       } else {
@@ -2723,9 +2941,9 @@
         selectedPointGroup.clearLayers();
         cancelAddPointMode(false);
         loginBtn.hidden = !isSupabaseConfigured();
+        loginBtn.textContent = 'Login';
         logoutBtn.hidden = true;
-        adminBtn.textContent = '🔒';
-        adminBtn.title = 'Admin Login';
+        if (adminBtn) { adminBtn.textContent = '🔒'; adminBtn.title = 'Admin Login'; }
         addHouseBtn.hidden = true;
         if (reportActions) reportActions.hidden = true;
       }
@@ -2822,6 +3040,8 @@
       if (isMobileLayout()) {
         panel.classList.remove('expanded');
         panel.classList.add('collapsed');
+        const search = document.getElementById('searchInput');
+        if (search && search.value) { search.value = ''; renderHouses(); }
         updateSheetToggle();
       }
       showToast(centerMode
@@ -2887,6 +3107,12 @@
       L.marker(latlng, { icon, interactive: false, zIndexOffset: 2000 }).addTo(selectedPointGroup);
     }
 
+    function toggleLegend() {
+      const legend = document.querySelector('.legend');
+      if (!legend) return;
+      legend.classList.toggle('show');
+    }
+
     function locateMe() {
       if (!navigator.geolocation) {
         showToast('เครื่องนี้ไม่รองรับ GPS');
@@ -2908,7 +3134,9 @@
     }
 
     function setStatus(text) {
-      document.getElementById('mapStatus').textContent = text;
+      // v6.4: hide routine boundary status from the map to reduce visual clutter.
+      const el = document.getElementById('mapStatus');
+      if (el) el.textContent = text || '';
     }
 
     function showToast(text) {
