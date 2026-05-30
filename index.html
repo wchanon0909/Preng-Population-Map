@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="format-detection" content="telephone=no" />
   <meta name="theme-color" content="#0f766e" />
-  <title>Preng Population Map V6.4.2</title>
+  <title>Preng Population Map V6.4.3</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1146,7 +1146,7 @@
       .brand-logo b { font-size: 10px; }
 
       .brand h1 { font-size: 14px; }
-      .brand p { display: none; }
+      .brand p { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
 
       .mode-card {
         flex: 0 0 auto;
@@ -1471,7 +1471,7 @@
       <div class="brand-logo"><span>Preng</span><b>People</b></div>
       <div style="min-width:0;">
         <h1>แผนที่ประชากร ตำบลเปร็ง</h1>
-        <p>Preng Population Map</p>
+        <p>v6.4.3</p>
       </div>
     </div>
 
@@ -1492,7 +1492,7 @@
     <button id="aerialLayerBtn" class="active" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v6.4.2</div>
+  <div class="version-tag">v6.4.3</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
@@ -1533,10 +1533,10 @@
   </section>
 
   <div class="floating-actions">
-    <button id="legendBtn" title="สัญลักษณ์">☷</button>
-    <button id="resetBtn" title="ดูทั้งตำบล">⌂</button>
-    <button id="locateBtn" title="ตำแหน่งฉัน">◎</button>
     <button id="addHouseBtn" class="add-house-btn" title="เพิ่มบ้าน" hidden>＋</button>
+    <button id="locateBtn" title="ตำแหน่งฉัน">◎</button>
+    <button id="resetBtn" title="ดูทั้งตำบล">⌂</button>
+    <button id="legendBtn" title="สัญลักษณ์">☷</button>
     <button id="adminBtn" title="Admin Login" hidden style="display:none;">🔒</button>
   </div>
 
@@ -1654,7 +1654,7 @@
   </div>
 
   <script>
-    const VERSION = 'v6.4.1';
+    const VERSION = 'v6.4.3';
     // 1) Paste values from Supabase > Project Settings > API here.
     // 2) Use anon/public key only. NEVER paste service_role key in frontend code.
     const SUPABASE_URL = 'https://iclmbqwktbqdirnskkzx.supabase.co';
@@ -2659,15 +2659,24 @@
           <section class="report-section">
             <h2>หมู่ที่ ${escapeHtml(village)} ${escapeHtml(villageName)}</h2>
             <table>
+              <colgroup>
+                <col class="col-no" />
+                <col class="col-name" />
+                <col class="col-status" />
+                <col class="col-birth" />
+                <col class="col-age" />
+                <col class="col-id" />
+                <col class="col-house" />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style="width:42px;">ลำดับ</th>
+                  <th>ลำดับ</th>
                   <th>ชื่อ-สกุล</th>
-                  <th style="width:95px;">สถานะ</th>
-                  <th style="width:95px;">วันเกิด</th>
-                  <th style="width:55px;">อายุ</th>
-                  <th style="width:145px;">หมายเลขประชาชน</th>
-                  <th style="width:90px;">บ้านเลขที่</th>
+                  <th>สถานะ</th>
+                  <th>วันเกิด</th>
+                  <th>อายุ</th>
+                  <th>หมายเลขประชาชน</th>
+                  <th>บ้านเลขที่</th>
                 </tr>
               </thead>
               <tbody>
@@ -2694,36 +2703,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>รายงานรายชื่อประชากร ตำบลเปร็ง</title>
   <style>
+    @page { size: A4 portrait; margin: 9mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, Tahoma, sans-serif; color: #0f172a; margin: 24px; }
-    h1 { font-size: 22px; margin: 0 0 4px; }
-    .meta { color: #475569; font-size: 12px; margin-bottom: 18px; }
-    .report-section { margin: 18px 0 26px; break-inside: avoid; }
-    h2 { font-size: 16px; margin: 0 0 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { border: 1px solid #334155; padding: 6px 8px; vertical-align: top; }
-    th { background: #f1f5f9; text-align: center; font-weight: 700; }
-    .center { text-align: center; }
-    .empty { color: #64748b; }
-    .print-actions { margin-bottom: 16px; display: flex; gap: 8px; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Arial, Tahoma, sans-serif;
+      color: #0f172a;
+      background: #e5e7eb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .print-actions {
+      width: 210mm;
+      max-width: calc(100vw - 20px);
+      margin: 12px auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
     button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
     .primary { background: #0f766e; color: white; }
     .secondary { background: #e2e8f0; color: #0f172a; }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 18px;
+      padding: 10mm;
+      background: white;
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
+      overflow: hidden;
+    }
+    h1 { font-size: 17pt; margin: 0 0 2mm; text-align: center; }
+    .meta { color: #475569; font-size: 9pt; margin-bottom: 5mm; text-align: center; }
+    .report-section { margin: 0 0 6mm; break-inside: auto; page-break-inside: auto; }
+    h2 { font-size: 11pt; margin: 0 0 2mm; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9pt; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    th, td { border: 0.35mm solid #334155; padding: 1.5mm 1.8mm; vertical-align: top; line-height: 1.22; overflow-wrap: anywhere; word-break: break-word; }
+    th { background: #f1f5f9; text-align: center; font-weight: 700; }
+    .center { text-align: center; }
+    .empty { color: #64748b; text-align: center; margin-top: 14mm; }
+    .col-no { width: 9%; }
+    .col-name { width: 27%; }
+    .col-status { width: 13%; }
+    .col-birth { width: 14%; }
+    .col-age { width: 8%; }
+    .col-id { width: 20%; }
+    .col-house { width: 9%; }
     @media print {
-      body { margin: 12mm; }
+      body { background: white; }
       .print-actions { display: none; }
-      .report-section { page-break-inside: avoid; }
+      .page { width: auto; min-height: auto; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
     }
   </style>
 </head>
 <body>
   <div class="print-actions">
-    <button class="primary" onclick="window.print()">Print</button>
+    <button class="primary" onclick="window.print()">Print / Save PDF</button>
     <button class="secondary" onclick="window.close()">Close</button>
   </div>
-  <h1>รายงานรายชื่อประชากร ตำบลเปร็ง</h1>
-  <div class="meta">Preng Population Map · ${escapeHtml(filterText)} · พิมพ์เมื่อ ${currentThaiDateTime()}</div>
-  ${sections}
+  <main class="page">
+    <h1>รายงานรายชื่อประชากร ตำบลเปร็ง</h1>
+    <div class="meta">Preng Population Map · ${escapeHtml(filterText)} · พิมพ์เมื่อ ${currentThaiDateTime()}</div>
+    ${sections}
+  </main>
 </body>
 </html>`;
       const win = window.open('', '_blank');
