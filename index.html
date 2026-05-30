@@ -1471,7 +1471,7 @@
       <div class="brand-logo"><span>Preng</span><b>People</b></div>
       <div style="min-width:0;">
         <h1>แผนที่ประชากร ตำบลเปร็ง</h1>
-        <p>v6.4.3</p>
+        <p>v6.4.4</p>
       </div>
     </div>
 
@@ -1492,7 +1492,7 @@
     <button id="aerialLayerBtn" class="active" type="button">ภาพถ่าย</button>
   </div>
 
-  <div class="version-tag">v6.4.3</div>
+  <div class="version-tag">v6.4.4</div>
   <div id="addHint" class="add-hint">Admin: PC กด + แล้วคลิกแผนที่ · มือถือใช้หมุดกลางจอ</div>
 
   <section id="dataPanel" class="panel">
@@ -1654,7 +1654,7 @@
   </div>
 
   <script>
-    const VERSION = 'v6.4.3';
+    const VERSION = 'v6.4.4';
     // 1) Paste values from Supabase > Project Settings > API here.
     // 2) Use anon/public key only. NEVER paste service_role key in frontend code.
     const SUPABASE_URL = 'https://iclmbqwktbqdirnskkzx.supabase.co';
@@ -1752,6 +1752,11 @@
     let currentPoint = null;
     let editingHouseId = null;
     let isSelectingPoint = false;
+    const ADMIN_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+    const ADMIN_INACTIVITY_WARNING_MS = 60 * 1000;
+    let adminSessionTimeoutTimer = null;
+    let adminSessionWarningTimer = null;
+    let lastAdminActivityAt = Date.now();
 
     initTouchPwaFix();
     initForms();
@@ -2080,6 +2085,7 @@
       document.getElementById('phone').addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
       initResponsiveLayout();
       initCenterPinAdd();
+      initAdminActivityTracking();
       window.addEventListener('resize', initResponsiveLayout);
     }
 
@@ -2962,7 +2968,61 @@
       }
     }
 
-    async function logoutAdmin() {
+    function clearAdminInactivityTimers() {
+      clearTimeout(adminSessionWarningTimer);
+      clearTimeout(adminSessionTimeoutTimer);
+      adminSessionWarningTimer = null;
+      adminSessionTimeoutTimer = null;
+    }
+
+    function resetAdminInactivityTimers(force = false) {
+      if (!isAdmin) {
+        clearAdminInactivityTimers();
+        return;
+      }
+      const now = Date.now();
+      if (!force && now - lastAdminActivityAt < 1000) return;
+      lastAdminActivityAt = now;
+      clearAdminInactivityTimers();
+      adminSessionWarningTimer = setTimeout(() => {
+        if (isAdmin) showToast('ไม่มีการใช้งานนาน ระบบจะออกจาก Admin อัตโนมัติใน 1 นาที');
+      }, ADMIN_INACTIVITY_TIMEOUT_MS - ADMIN_INACTIVITY_WARNING_MS);
+      adminSessionTimeoutTimer = setTimeout(() => {
+        autoLogoutAdmin();
+      }, ADMIN_INACTIVITY_TIMEOUT_MS);
+    }
+
+    function syncAdminSessionTimer() {
+      if (isAdmin) resetAdminInactivityTimers(true);
+      else clearAdminInactivityTimers();
+    }
+
+    function recordAdminActivity() {
+      if (!isAdmin) return;
+      resetAdminInactivityTimers(false);
+    }
+
+    function initAdminActivityTracking() {
+      const events = ['pointerdown', 'touchstart', 'keydown', 'input', 'wheel'];
+      events.forEach(eventName => {
+        document.addEventListener(eventName, recordAdminActivity, { passive: true, capture: true });
+      });
+      map.on('click movestart zoomstart dragstart', recordAdminActivity);
+      document.addEventListener('visibilitychange', () => {
+        if (!isAdmin) return;
+        if (document.visibilityState === 'visible' && Date.now() - lastAdminActivityAt >= ADMIN_INACTIVITY_TIMEOUT_MS) {
+          autoLogoutAdmin();
+        }
+      });
+    }
+
+    async function autoLogoutAdmin() {
+      if (!isAdmin) return;
+      await logoutAdmin('timeout');
+    }
+
+    async function logoutAdmin(reason = 'manual') {
+      clearAdminInactivityTimers();
       cancelAddPointMode();
       try {
         if (isSupabaseConfigured()) await supabaseClient.auth.signOut();
@@ -2974,7 +3034,11 @@
       currentProfile = null;
       updateModeUI();
       await refreshHouses();
-      showToast('กลับสู่ Viewer Mode แล้ว');
+      if (reason === 'timeout') {
+        showToast('ออกจาก Admin อัตโนมัติแล้ว เนื่องจากไม่มีการใช้งานเกิน 15 นาที');
+      } else {
+        showToast('กลับสู่ Viewer Mode แล้ว');
+      }
     }
 
     function updateModeUI() {
@@ -3024,6 +3088,7 @@
         addHouseBtn.hidden = true;
         if (reportActions) reportActions.hidden = true;
       }
+      syncAdminSessionTimer();
     }
 
     function setBaseLayer(type) {
